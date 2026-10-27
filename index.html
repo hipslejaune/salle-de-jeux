@@ -1,0 +1,74 @@
+<title>Salle de jeux</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: three big square game tiles, centered grid, wrapping to one column on phones */
+:root{
+  --bg:#f3f1fb; --fg:#1f1b3a; --muted:#5d5880;
+  --mult-a:#3b5bdb; --mult-b:#7048e8;
+  --add-a:#f59f00; --add-b:#e03131;
+  --nin-a:#2b8a3e; --nin-b:#1b1f2a;
+  --font:'Fredoka','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#15132a;--fg:#f1eefc;--muted:#a9a3cf;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#15132a;--fg:#f1eefc;--muted:#a9a3cf;color-scheme:dark}
+body{
+  background:var(--bg);color:var(--fg);font-family:var(--font);
+  padding-block:32px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+main{max-width:1000px;margin:0 auto}
+h1{font-size:clamp(2rem,6vw,3.25rem);font-weight:700;margin:0 0 6px;text-wrap:balance}
+.sub{color:var(--muted);font-size:1.15rem;margin:0 0 28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:20px}
+.tile{
+  aspect-ratio:1/1;max-width:100%;min-width:0;
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:22px;border-radius:28px;color:#fff;text-decoration:none;
+  position:relative;overflow:hidden;
+  transition:transform .15s ease, box-shadow .15s ease;
+  box-shadow:0 8px 0 rgba(0,0,0,.22);
+}
+.tile:hover,.tile:focus-visible{transform:translateY(-4px) rotate(-.6deg);box-shadow:0 12px 0 rgba(0,0,0,.22)}
+.tile:active{transform:translateY(4px);box-shadow:0 3px 0 rgba(0,0,0,.22)}
+.tile:focus-visible{outline:4px solid var(--fg);outline-offset:4px}
+.mult{background:linear-gradient(145deg,var(--mult-a),var(--mult-b))}
+.add{background:linear-gradient(145deg,var(--add-a),var(--add-b))}
+.nin{background:linear-gradient(145deg,var(--nin-a),var(--nin-b))}
+.glyph{font-size:clamp(4rem,14vw,7rem);font-weight:700;line-height:1;letter-spacing:-.02em;text-shadow:0 4px 0 rgba(0,0,0,.2)}
+.nin .glyph{font-size:clamp(3.2rem,11vw,5.6rem)}
+.label{font-size:1.7rem;font-weight:700;line-height:1.1}
+.hint{font-size:1.05rem;opacity:.92;margin-top:4px}
+.badge{
+  align-self:flex-start;font-size:.95rem;font-weight:600;
+  background:rgba(255,255,255,.22);padding:4px 12px;border-radius:999px;
+}
+@media (prefers-reduced-motion: reduce){.tile{transition:none}}
+</style>
+
+<main>
+  <h1>La salle de jeux</h1>
+  <p class="sub">Touche un carré pour jouer.</p>
+  <div class="grid">
+    <a class="tile mult" href="https://hipslejaune.github.io/tables-multiplication/" target="_blank" rel="noopener">
+      <span class="badge">Tables</span>
+      <span class="glyph" aria-hidden="true">× ÷</span>
+      <span><span class="label">Le défi des multiplications</span><div class="hint">Les tables, de plus en plus fort</div></span>
+    </a>
+    <a class="tile add" href="https://hipslejaune.github.io/additions-soustractions/" target="_blank" rel="noopener">
+      <span class="badge">Calcul</span>
+      <span class="glyph" aria-hidden="true">+ −</span>
+      <span><span class="label">Additions et soustractions</span><div class="hint">Du 20 jusqu'au 100</div></span>
+    </a>
+    <a class="tile nin" href="https://hipslejaune.github.io/jeu-lecture-ninjago/" target="_blank" rel="noopener">
+      <span class="badge">Lecture</span>
+      <span class="glyph" aria-hidden="true">Lire</span>
+      <span><span class="label">Lecture Ninjago</span><div class="hint">30 dojos à traverser</div></span>
+    </a>
+  </div>
+</main>
