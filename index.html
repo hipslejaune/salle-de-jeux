@@ -37,9 +37,10 @@ h1{font-size:clamp(2rem,6vw,3.25rem);font-weight:700;margin:0 0 6px;text-wrap:ba
 .tile:hover,.tile:focus-visible{transform:translateY(-4px) rotate(-.6deg);box-shadow:0 12px 0 rgba(0,0,0,.22)}
 .tile:active{transform:translateY(4px);box-shadow:0 3px 0 rgba(0,0,0,.22)}
 .tile:focus-visible{outline:4px solid var(--fg);outline-offset:4px}
-.mult{background:linear-gradient(145deg,var(--mult-a),var(--mult-b))}
-.add{background:linear-gradient(145deg,var(--add-a),var(--add-b))}
-.nin{background:linear-gradient(145deg,var(--nin-a),var(--nin-b))}
+.tile{background-size:cover;background-position:center;background-color:#1b1f2a}
+.mult{background-image:linear-gradient(180deg,rgba(20,16,43,.15) 0%,rgba(20,16,43,.82) 100%),url("images/fond-multiplications.jpg");background-position:center 42%}
+.add{background-image:linear-gradient(180deg,rgba(11,19,48,.15) 0%,rgba(11,19,48,.82) 100%),url("images/fond-additions.jpg");background-position:42% center}
+.nin{background-image:linear-gradient(180deg,rgba(14,17,40,.15) 0%,rgba(14,17,40,.82) 100%),url("images/fond-ninjago.jpg");background-position:60% center}
 .glyph{font-size:clamp(4rem,14vw,7rem);font-weight:700;line-height:1;letter-spacing:-.02em;text-shadow:0 4px 0 rgba(0,0,0,.2)}
 .nin .glyph{font-size:clamp(3.2rem,11vw,5.6rem)}
 .label{font-size:1.7rem;font-weight:700;line-height:1.1}
