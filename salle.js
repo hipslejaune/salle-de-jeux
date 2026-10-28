@@ -21,6 +21,18 @@
     accueil: 'https://hipslejaune.github.io/salle-de-jeux/',
     cleTurnstile: CLE_TURNSTILE,
     versionConfidentialite: VERSION_CONFIDENTIALITE,
+    // Journal des accès (IP, pays et navigateur sont lus côté base ; on n'envoie que quelques indices techniques)
+    journaliser: function (evenement, jeu) {
+      try {
+        var infos = {
+          webdriver: navigator.webdriver === true,
+          langue: navigator.language || '',
+          ecran: (screen.width || 0) + 'x' + (screen.height || 0),
+          fuseau: (Intl.DateTimeFormat().resolvedOptions().timeZone) || ''
+        };
+        return Promise.resolve(client.rpc('journaliser', { evenement: evenement, jeu: jeu || null, infos: infos })).catch(function () {});
+      } catch (e) { return Promise.resolve(); }
+    },
     // Enfant choisi sur cet appareil (rien d'autre n'est gardé dans le navigateur)
     enfantCourant: function () {
       try { return JSON.parse(localStorage.getItem(CLE_ENFANT)); } catch (e) { return null; }

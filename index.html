@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0D2E">
+<meta name="robots" content="noindex,nofollow">
 <meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -84,6 +85,9 @@ select option{background:var(--sheet);color:var(--tx)}
 .msg{margin:0 0 14px;padding:10px 14px;border-radius:14px;font-weight:500;font-size:14px;border:1px solid transparent}
 .msg.ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
 .msg.err{background:var(--err-bg);color:var(--err);border-color:var(--err-line)}
+.puce-statut{flex:none;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid transparent}
+.puce-statut.ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+.puce-statut.alerte{background:var(--err-bg);color:var(--err);border-color:var(--err-line)}
 .msg.info{background:rgba(79,209,255,.12);color:var(--cy-lt);border-color:rgba(79,209,255,.4)}
 
 /* Salle : en-tête et boutons du haut */
@@ -345,7 +349,18 @@ select option{background:var(--sheet);color:var(--tx)}
       <input id="admin-mdp" type="password" inputmode="numeric" autocomplete="off" required></div>
       <button class="btn" type="submit">Afficher les comptes</button>
     </form>
+    <div class="seg" id="admin-onglets" role="tablist" hidden style="margin:0">
+      <button type="button" role="tab" id="adm-t-comptes" aria-selected="true">Comptes</button>
+      <button type="button" role="tab" id="adm-t-acces" aria-selected="false">Accès</button>
+    </div>
     <div id="admin-liste" hidden></div>
+    <div id="admin-acces" hidden>
+      <div style="display:flex;gap:8px;align-items:center;margin:2px 0 6px">
+        <label for="adm-filtre" class="sub" style="margin:0">Afficher</label>
+        <select id="adm-filtre" style="flex:1"><option value="tous">Tous les accès</option><option value="humains">Humains probables</option><option value="robots">Robots et suspects</option></select>
+      </div>
+      <div id="adm-acces-liste"></div>
+    </div>
   </div>
 </div>
 
@@ -461,6 +476,7 @@ select option{background:var(--sheet);color:var(--tx)}
     try {
       var r = await client.auth.signInWithPassword({ email: mail, password: mdp, options: { captchaToken: c.jeton } });
       if (r.error) message('#msg-auth', traduire(r.error), 'err');
+      else setTimeout(function () { Salle.journaliser('connexion'); }, 300);
     } catch (err) { message('#msg-auth', traduire(err), 'err'); }
     renouvelerCaptcha('connexion');
     occupe(b, false);
@@ -529,6 +545,7 @@ select option{background:var(--sheet);color:var(--tx)}
 
   /* ---------- Déconnexion ---------- */
   $('#btn-deco').onclick = async function () {
+    try { await Promise.race([Salle.journaliser('deconnexion'), new Promise(function (ok) { setTimeout(ok, 1500); })]); } catch (e) { /* le suivi ne bloque jamais */ }
     try { await client.auth.signOut(); } catch (e) { /* on nettoie quand même */ }
     sortir();
   };
@@ -570,6 +587,7 @@ select option{background:var(--sheet);color:var(--tx)}
     message('#msg-salle', ''); $('#suppr-compte').hidden = true;
     montrer('ecran-salle');
     verifierAdmin();
+    if (!window.__accesNote) { window.__accesNote = true; Salle.journaliser('ouverture_salle'); }
     await chargerEnfants();
   }
 
@@ -655,8 +673,11 @@ select option{background:var(--sheet);color:var(--tx)}
   $('#btn-gerer').onclick = ouvrirGestion;
 
   /* ---------- Administration : tout est vérifié côté base (compte administrateur + code stocké chiffré) ---------- */
+  var adminCode = null;   // gardé en mémoire seulement pendant que la fenêtre est ouverte
   function fermerAdmin() {
+    adminCode = null;
     $('#admin').hidden = true; $('#admin-mdp').value = ''; $('#admin-liste').textContent = ''; $('#admin-liste').hidden = true;
+    $('#admin-acces').hidden = true; $('#adm-acces-liste').textContent = ''; $('#admin-onglets').hidden = true;
     $('#f-admin').hidden = false; message('#msg-admin', '');
     document.documentElement.style.overflow = '';
   }
@@ -673,6 +694,39 @@ select option{background:var(--sheet);color:var(--tx)}
   $('#fermer-admin').onclick = fermerAdmin;
   $('#admin').addEventListener('click', function (e) { if (e.target.id === 'admin') fermerAdmin(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#admin').hidden) fermerAdmin(); });
+  var LIB_EVT = { connexion: 'Connexion', ouverture_salle: 'Ouverture de la salle', lancement_jeu: 'Lancement d\'un jeu', deconnexion: 'Déconnexion' };
+  var LIB_STATUT = { humain_probable: 'Humain probable', robot_declare: 'Robot déclaré', automatise: 'Automatisé', suspect: 'Suspect' };
+  function ongletAdmin(nom) {
+    $('#adm-t-comptes').setAttribute('aria-selected', nom === 'comptes'); $('#adm-t-acces').setAttribute('aria-selected', nom === 'acces');
+    $('#admin-liste').hidden = nom !== 'comptes'; $('#admin-acces').hidden = nom !== 'acces';
+    if (nom === 'acces') chargerJournal();
+  }
+  $('#adm-t-comptes').onclick = function () { ongletAdmin('comptes'); };
+  $('#adm-t-acces').onclick = function () { ongletAdmin('acces'); };
+  $('#adm-filtre').onchange = chargerJournal;
+  async function chargerJournal() {
+    if (!adminCode) return;
+    var zone = $('#adm-acces-liste'); zone.textContent = 'Chargement…';
+    try {
+      var r = await client.rpc('admin_journal', { mot_de_passe: adminCode, filtre: $('#adm-filtre').value, limite: 200 });
+      if (r.error) throw r.error;
+      if (!r.data || r.data.ok !== true) { zone.textContent = ''; return message('#msg-admin', (r.data && r.data.message) || 'Accès refusé.', 'err'); }
+      var lignes = r.data.lignes || []; zone.textContent = '';
+      if (!lignes.length) return zone.appendChild(el('p', { class: 'sub', text: 'Aucun accès à afficher.' }));
+      zone.appendChild(el('div', { class: 'lab', style: 'margin:0 2px 8px', text: lignes.length + ' accès (les plus récents d\'abord)' }));
+      lignes.forEach(function (l) {
+        var d = new Date(l.cree_le);
+        var statut = el('span', { class: 'puce-statut ' + (l.statut === 'humain_probable' ? 'ok' : 'alerte'), text: LIB_STATUT[l.statut] || l.statut });
+        zone.appendChild(el('div', { class: 'ligne', style: 'display:block' }, [
+          el('div', { style: 'display:flex;justify-content:space-between;gap:8px;align-items:center' }, [
+            el('div', { style: 'font-weight:700', text: (LIB_EVT[l.evenement] || l.evenement) + (l.jeu ? ' : ' + l.jeu : '') }), statut ]),
+          el('div', { class: 'sub', style: 'word-break:break-all', text: (l.email || '(compte supprimé)') }),
+          el('div', { class: 'sub', text: d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (l.ip || 'IP inconnue') + (l.pays ? ' (' + l.pays + ')' : '') }),
+          el('div', { class: 'sub', text: [l.os, l.navigateur, l.appareil].filter(Boolean).join(' · ') + (l.fuseau ? ' · ' + l.fuseau : '') })
+        ]));
+      });
+    } catch (err) { zone.textContent = ''; message('#msg-admin', traduire(err), 'err'); }
+  }
   function jour(iso) { return iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'jamais'; }
   $('#f-admin').onsubmit = async function (e) {
     e.preventDefault();
@@ -684,8 +738,8 @@ select option{background:var(--sheet);color:var(--tx)}
       if (r.error) throw r.error;
       if (!r.data || r.data.ok !== true) { message('#msg-admin', (r.data && r.data.message) || 'Accès refusé.', 'err'); $('#admin-mdp').value = ''; }
       else {
-        $('#admin-mdp').value = ''; $('#f-admin').hidden = true;
-        var comptes = r.data.comptes || [], liste = $('#admin-liste'); liste.textContent = ''; liste.hidden = false;
+        adminCode = code; $('#admin-mdp').value = ''; $('#f-admin').hidden = true; $('#admin-onglets').hidden = false; ongletAdmin('comptes');
+        var comptes = r.data.comptes || [], liste = $('#admin-liste'); liste.textContent = '';
         var il30 = Date.now() - 30 * 864e5, actifs = comptes.filter(function (c) { return c.derniere_connexion && new Date(c.derniere_connexion).getTime() > il30; }).length;
         var enfantsTot = comptes.reduce(function (a, c) { return a + (c.nb_enfants || 0); }, 0);
         liste.appendChild(el('div', { class: 'lab', style: 'margin:0 2px 10px', text: comptes.length + ' compte' + (comptes.length > 1 ? 's' : '') + ' · ' + actifs + ' actif' + (actifs > 1 ? 's' : '') + ' ce mois-ci · ' + enfantsTot + ' enfant' + (enfantsTot > 1 ? 's' : '') }));
@@ -693,6 +747,7 @@ select option{background:var(--sheet);color:var(--tx)}
           liste.appendChild(el('div', { class: 'ligne', style: 'display:block' }, [
             el('div', { style: 'font-weight:700;word-break:break-all', text: c.email || '(sans e-mail)' }),
             el('div', { class: 'sub', text: 'Créé le ' + jour(c.cree_le) + ' · dernière connexion : ' + jour(c.derniere_connexion) + (c.confirme ? '' : ' · e-mail non confirmé') }),
+            el('div', { class: 'sub', text: c.derniere_ip ? 'Dernier accès : ' + c.derniere_ip + ' · ' + (c.dernier_appareil || '') : 'Aucun accès enregistré' }),
             el('div', { class: 'sub', text: (c.nb_enfants || 0) + ' enfant' + (c.nb_enfants > 1 ? 's' : '') + ' · ' + (c.nb_parties || 0) + ' partie' + (c.nb_parties > 1 ? 's' : '') + ' · dernière partie : ' + jour(c.derniere_partie) })
           ]));
         });

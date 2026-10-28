@@ -179,6 +179,7 @@
     poserBandeau();
     document.addEventListener('visibilitychange', function () { if (document.hidden) tout(); });
     window.addEventListener('pagehide', tout);
+    try { window.Salle.journaliser('lancement_jeu', jeu); } catch (e) { /* le suivi ne doit jamais gêner le jeu */ }
     racine.style.visibility = 'visible';
     quandPret(etat || null, { id: enfant.id, prenom: enfant.prenom, niveau: enfant.niveau || null });
   }
