@@ -9,10 +9,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Salle de jeux">
 <title>Salle de jeux</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/dm-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+@font-face{font-family:'DM Sans';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/dm-sans-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'DM Sans';font-weight:500;font-style:normal;font-display:swap;src:url(fonts/dm-sans-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'DM Sans';font-weight:600;font-style:normal;font-display:swap;src:url(fonts/dm-sans-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'DM Sans';font-weight:700;font-style:normal;font-display:swap;src:url(fonts/dm-sans-latin-700-normal.woff2) format('woff2')}
 /* Identité reprise de l'application Chauffage : bleu nuit, halos rose et cyan, dégradé orange-rose, cartes translucides.
    Mise en page : écran de connexion centré, puis salle avec boutons en haut, barre des enfants et carrés de jeux. */
 :root{
@@ -124,6 +126,18 @@ select option{background:var(--sheet);color:var(--tx)}
 .ajout .ligne{border:0;padding:0}
 .ajout .btn{width:100%}
 
+/* Case à cocher, anti-robot, pied de page, suppression de compte */
+.case{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;font-size:13.5px;line-height:1.4;color:var(--mut2);font-weight:400}
+.case input{width:22px;height:22px;min-height:0;margin:1px 0 0;flex:none;accent-color:#FF3D8B}
+.case a,.pied a{color:var(--cy-lt);font-weight:600}
+.cap{min-height:0;margin:0 0 14px}
+.cap:empty{display:none}
+.pied{margin:36px 4px 0;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--mut)}
+.pied button{background:none;border:0;padding:0;color:#FF8FB1;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline}
+#suppr-compte{margin-top:14px}
+#suppr-compte .carte{border-color:var(--err-line);background:var(--err-bg)}
+#suppr-compte p{margin:0 0 12px;color:var(--tx)}
+
 /* Carrés des jeux */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
 .tile{
@@ -178,6 +192,7 @@ select option{background:var(--sheet);color:var(--tx)}
         <input id="c-mail" type="email" autocomplete="email" required></div>
       <div class="champ"><label for="c-mdp">Mot de passe</label>
         <input id="c-mdp" type="password" autocomplete="current-password" required></div>
+      <div class="cap" id="cap-connexion"></div>
       <button class="btn plein" type="submit">Me connecter</button>
       <p style="text-align:center;margin:10px 0 0"><button type="button" class="lien" id="vers-oubli">Mot de passe oublié ?</button></p>
     </form>
@@ -190,6 +205,9 @@ select option{background:var(--sheet);color:var(--tx)}
         <p class="aide">Au moins 8 caractères.</p></div>
       <div class="champ"><label for="i-mdp2">Répète le mot de passe</label>
         <input id="i-mdp2" type="password" autocomplete="new-password" required></div>
+      <label class="case" for="i-accord"><input id="i-accord" type="checkbox">
+        <span>J'ai lu la <a href="confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>, je l'accepte, et je certifie être le parent ou le responsable légal des enfants que j'ajouterai.</span></label>
+      <div class="cap" id="cap-inscription"></div>
       <button class="btn plein" type="submit">Créer mon compte</button>
     </form>
 
@@ -198,9 +216,11 @@ select option{background:var(--sheet);color:var(--tx)}
       <p class="aide" style="margin:0 0 14px">Indique ton adresse mail : tu recevras un lien pour en choisir un nouveau.</p>
       <div class="champ"><label for="o-mail">Adresse mail du parent</label>
         <input id="o-mail" type="email" autocomplete="email" required></div>
+      <div class="cap" id="cap-oubli"></div>
       <button class="btn plein" type="submit">Envoyer le lien</button>
       <p style="text-align:center;margin:10px 0 0"><button type="button" class="lien" id="retour-connexion">Retour à la connexion</button></p>
     </form>
+    <p class="aide" style="text-align:center;margin:14px 0 0"><a href="confidentialite.html" target="_blank" rel="noopener" style="color:var(--cy-lt)">Confidentialité</a></p>
   </div>
 </section>
 
@@ -264,6 +284,23 @@ select option{background:var(--sheet);color:var(--tx)}
       <span><span class="label">Dizaines et unités</span><div class="hint">Entoure les paquets de 10</div></span>
     </a>
   </div>
+
+  <footer class="pied">
+    <a href="confidentialite.html" target="_blank" rel="noopener">Confidentialité</a>
+    <button type="button" id="btn-suppr">Supprimer mon compte</button>
+  </footer>
+  <div id="suppr-compte" hidden>
+    <div class="carte">
+      <p><b>Supprimer ton compte ?</b> Cela efface ton adresse mail, tous les enfants et tout leur historique de jeu. C'est immédiat et définitif.</p>
+      <label for="suppr-mot">Écris SUPPRIMER pour confirmer</label>
+      <input id="suppr-mot" type="text" autocomplete="off" autocapitalize="characters" style="margin-bottom:12px">
+      <p id="msg-suppr" class="msg" role="status" hidden></p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <button type="button" class="btn danger petit" id="suppr-ok" disabled>Supprimer définitivement mon compte</button>
+        <button type="button" class="btn ghost petit" id="suppr-non">Annuler</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <!-- Fenêtre : gérer les enfants -->
@@ -286,7 +323,7 @@ select option{background:var(--sheet);color:var(--tx)}
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="vendor/supabase.js"></script>
 <script src="salle.js"></script>
 <script>
 (function () {
@@ -313,6 +350,7 @@ select option{background:var(--sheet);color:var(--tx)}
   function montrer(id) {
     ['chargement', 'ecran-auth', 'ecran-recup', 'ecran-salle'].forEach(function (e) { $('#' + e).hidden = (e !== id); });
     if (id !== 'ecran-salle') fermerGestion();
+    if (id === 'ecran-auth' && typeof chargerTurnstile === 'function' && window.cap) { chargerTurnstile(); montrerCaptcha(); }
   }
   function message(sel, texte, type) {
     var m = $(sel);
@@ -333,6 +371,43 @@ select option{background:var(--sheet);color:var(--tx)}
   }
   function occupe(bouton, oui) { bouton.disabled = oui; }
 
+  /* ---------- Anti-robot (Cloudflare Turnstile), actif seulement si une clé est renseignée dans salle.js ---------- */
+  var cap = window.cap = { pret: false, echec: false, widgets: {}, jetons: {} };
+  function chargerTurnstile() {
+    if (!Salle.cleTurnstile || cap.charge) return;
+    cap.charge = true;
+    var sc = document.createElement('script');
+    sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    sc.async = true;
+    sc.onload = function () { cap.pret = true; montrerCaptcha(); };
+    sc.onerror = function () { cap.echec = true; };
+    document.head.appendChild(sc);
+  }
+  function montrerCaptcha() {
+    if (!Salle.cleTurnstile || !cap.pret || !window.turnstile) return;
+    ['connexion', 'inscription', 'oubli'].forEach(function (nom) {
+      var form = $('#f-' + nom), slot = $('#cap-' + nom);
+      if (form.hidden || cap.widgets[nom] !== undefined) return;
+      cap.widgets[nom] = window.turnstile.render(slot, {
+        sitekey: Salle.cleTurnstile, theme: 'dark', language: 'fr',
+        callback: function (t) { cap.jetons[nom] = t; },
+        'expired-callback': function () { cap.jetons[nom] = null; },
+        'error-callback': function () { cap.jetons[nom] = null; }
+      });
+    });
+  }
+  // Renvoie le jeton à joindre à la demande, ou null (avec message) si la vérification n'est pas faite
+  function jetonCaptcha(nom, selMsg) {
+    if (!Salle.cleTurnstile) return { ok: true, jeton: undefined };
+    if (cap.echec) { message(selMsg, 'La vérification anti-robot n\'a pas pu se charger. Désactive ton bloqueur de publicités pour cette page, puis recharge.', 'err'); return { ok: false }; }
+    if (!cap.jetons[nom]) { message(selMsg, 'Coche d\'abord la vérification anti-robot ci-dessus.', 'err'); return { ok: false }; }
+    return { ok: true, jeton: cap.jetons[nom] };
+  }
+  function renouvelerCaptcha(nom) {   // un jeton ne sert qu'une fois
+    cap.jetons[nom] = null;
+    if (window.turnstile && cap.widgets[nom] !== undefined) { try { window.turnstile.reset(cap.widgets[nom]); } catch (e) { /* ignoré */ } }
+  }
+
   /* ---------- Onglets de l'écran de connexion ---------- */
   function ouvrirOnglet(nom) {
     message('#msg-auth', '');
@@ -341,6 +416,7 @@ select option{background:var(--sheet);color:var(--tx)}
     $('#f-oubli').hidden = nom !== 'oubli';
     $('#onglet-connexion').setAttribute('aria-selected', nom === 'connexion');
     $('#onglet-inscription').setAttribute('aria-selected', nom === 'inscription');
+    chargerTurnstile(); montrerCaptcha();
   }
   $('#onglet-connexion').onclick = function () { ouvrirOnglet('connexion'); };
   $('#onglet-inscription').onclick = function () { ouvrirOnglet('inscription'); };
@@ -354,11 +430,13 @@ select option{background:var(--sheet);color:var(--tx)}
     e.preventDefault();
     var mail = $('#c-mail').value.trim(), mdp = $('#c-mdp').value;
     if (!mail || !mdp) return message('#msg-auth', 'Renseigne ton adresse mail et ton mot de passe.', 'err');
+    var c = jetonCaptcha('connexion', '#msg-auth'); if (!c.ok) return;
     var b = e.submitter; occupe(b, true); message('#msg-auth', '');
     try {
-      var r = await client.auth.signInWithPassword({ email: mail, password: mdp });
+      var r = await client.auth.signInWithPassword({ email: mail, password: mdp, options: { captchaToken: c.jeton } });
       if (r.error) message('#msg-auth', traduire(r.error), 'err');
     } catch (err) { message('#msg-auth', traduire(err), 'err'); }
+    renouvelerCaptcha('connexion');
     occupe(b, false);
   };
 
@@ -369,15 +447,21 @@ select option{background:var(--sheet);color:var(--tx)}
     if (!mail) return message('#msg-auth', 'Renseigne ton adresse mail.', 'err');
     if (mdp.length < 8) return message('#msg-auth', 'Le mot de passe doit faire au moins 8 caractères.', 'err');
     if (mdp !== mdp2) return message('#msg-auth', 'Les deux mots de passe ne sont pas identiques.', 'err');
+    if (!$('#i-accord').checked) return message('#msg-auth', 'Coche la case pour accepter la politique de confidentialité.', 'err');
+    var c = jetonCaptcha('inscription', '#msg-auth'); if (!c.ok) return;
     var b = e.submitter; occupe(b, true); message('#msg-auth', '');
     try {
-      var r = await client.auth.signUp({ email: mail, password: mdp, options: { emailRedirectTo: adresseRetour() } });
+      var r = await client.auth.signUp({ email: mail, password: mdp, options: {
+        emailRedirectTo: adresseRetour(), captchaToken: c.jeton,
+        data: { confidentialite_acceptee: Salle.versionConfidentialite, responsable_legal_certifie: true }
+      } });
       if (r.error) message('#msg-auth', traduire(r.error), 'err');
       else if (!r.data.session) {
         $('#c-mail').value = mail; ouvrirOnglet('connexion');
         message('#msg-auth', 'Presque fini ! Clique sur le lien dans le mail que tu viens de recevoir pour activer ton compte.', 'ok');
       }
     } catch (err) { message('#msg-auth', traduire(err), 'err'); }
+    renouvelerCaptcha('inscription');
     occupe(b, false);
   };
 
@@ -386,12 +470,14 @@ select option{background:var(--sheet);color:var(--tx)}
     e.preventDefault();
     var mail = $('#o-mail').value.trim();
     if (!mail) return message('#msg-auth', 'Renseigne ton adresse mail.', 'err');
+    var c = jetonCaptcha('oubli', '#msg-auth'); if (!c.ok) return;
     var b = e.submitter; occupe(b, true); message('#msg-auth', '');
     try {
-      var r = await client.auth.resetPasswordForEmail(mail, { redirectTo: adresseRetour() });
+      var r = await client.auth.resetPasswordForEmail(mail, { redirectTo: adresseRetour(), captchaToken: c.jeton });
       if (r.error) message('#msg-auth', traduire(r.error), 'err');
       else message('#msg-auth', 'Si un compte existe avec cette adresse, un mail vient d\'être envoyé. Pense à regarder les courriers indésirables.', 'ok');
     } catch (err) { message('#msg-auth', traduire(err), 'err'); }
+    renouvelerCaptcha('oubli');
     occupe(b, false);
   };
 
@@ -428,13 +514,34 @@ select option{background:var(--sheet);color:var(--tx)}
     montrer('ecran-auth');
   }
 
+  /* ---------- Suppression du compte (RGPD : effacement) ---------- */
+  $('#btn-suppr').onclick = function () {
+    $('#suppr-compte').hidden = false; $('#suppr-mot').value = ''; $('#suppr-ok').disabled = true; message('#msg-suppr', '');
+    $('#suppr-mot').focus(); $('#suppr-compte').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  $('#suppr-non').onclick = function () { $('#suppr-compte').hidden = true; };
+  $('#suppr-mot').oninput = function () { $('#suppr-ok').disabled = this.value.trim().toUpperCase() !== 'SUPPRIMER'; };
+  $('#suppr-ok').onclick = async function () {
+    var b = this; occupe(b, true); message('#msg-suppr', '');
+    try {
+      var r = await client.rpc('supprimer_mon_compte');
+      if (r.error) throw r.error;
+      try { await client.auth.signOut(); } catch (e) { /* le compte n'existe plus : on nettoie quand même */ }
+      sortir();
+      $('#suppr-compte').hidden = true;
+      message('#msg-auth', 'Ton compte et toutes les données associées ont été supprimés.', 'ok');
+    } catch (err) {
+      message('#msg-suppr', 'La suppression a échoué : ' + traduire(err), 'err'); occupe(b, false);
+    }
+  };
+
   /* ---------- La salle ---------- */
   async function ouvrirSalle(session) {
     utilisateur = session.user.id;
     var d = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     $('#date-jour').textContent = d.charAt(0).toUpperCase() + d.slice(1);
     $('#parent-mail').textContent = session.user.email || '';
-    message('#msg-salle', '');
+    message('#msg-salle', ''); $('#suppr-compte').hidden = true;
     montrer('ecran-salle');
     await chargerEnfants();
   }

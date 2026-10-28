@@ -4,6 +4,10 @@
 (function () {
   var URL_SUPABASE = 'https://gjqufcsznhfimnnprion.supabase.co';
   var CLE_PUBLIQUE = 'sb_publishable_q5JqM7-S4GLs9rmH-_DDLA_1Y6RrozB';
+  // Clé publique Cloudflare Turnstile (anti-robot). Vide = anti-robot désactivé.
+  var CLE_TURNSTILE = '';
+  // Date de la version de la page de confidentialité acceptée à l'inscription
+  var VERSION_CONFIDENTIALITE = '2026-10-28';
   var CLE_ENFANT = 'salle-enfant';
 
   var client = window.supabase.createClient(URL_SUPABASE, CLE_PUBLIQUE, {
@@ -13,6 +17,8 @@
   window.Salle = {
     client: client,
     accueil: 'https://hipslejaune.github.io/salle-de-jeux/',
+    cleTurnstile: CLE_TURNSTILE,
+    versionConfidentialite: VERSION_CONFIDENTIALITE,
     // Enfant choisi sur cet appareil (rien d'autre n'est gardé dans le navigateur)
     enfantCourant: function () {
       try { return JSON.parse(localStorage.getItem(CLE_ENFANT)); } catch (e) { return null; }

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0D2E">
+<meta name="color-scheme" content="dark">
+<title>Confidentialité – Salle de jeux</title>
+<style>
+@font-face{font-family:'DM Sans';font-weight:400;font-display:swap;src:url(fonts/dm-sans-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'DM Sans';font-weight:700;font-display:swap;src:url(fonts/dm-sans-latin-700-normal.woff2) format('woff2')}
+:root{--tx:#F2F4FF;--mut:#9AA3D6;--cy:#4FD1FF;--line:rgba(255,255,255,.09);color-scheme:dark}
+*{box-sizing:border-box}
+html{background:#0A0D2E}
+body{margin:0;color:var(--tx);font:400 16px/1.55 'DM Sans',system-ui,sans-serif;
+  background:radial-gradient(circle at 100% 0%,rgba(255,94,138,.25),transparent 42%),radial-gradient(circle at 0% 48%,rgba(79,209,255,.14),transparent 40%),linear-gradient(180deg,#0E1240,#0A0D2E) fixed;
+  padding:calc(18px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px))}
+main{max-width:720px;margin:0 auto}
+a{color:var(--cy)}
+h1{font-size:clamp(26px,5vw,34px);line-height:1.2;margin:14px 0 4px}
+h2{font-size:18px;margin:0 0 6px}
+.maj{color:var(--mut);font-size:13px;margin:0 0 18px}
+section{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin:0 0 12px}
+section p,section ul{margin:6px 0 0}
+ul{padding-left:20px}
+li{margin:3px 0}
+.retour{display:inline-block;margin-top:4px}
+</style>
+</head>
+<body>
+<main>
+<a class="retour" href="./">← Retour à la salle de jeux</a>
+<h1>Confidentialité</h1>
+<p class="maj">Version du 28 octobre 2026</p>
+
+<section><h2>En deux mots</h2>
+<p>La salle de jeux est un petit site familial, gratuit, sans publicité. Nous gardons le strict nécessaire pour que chaque enfant retrouve sa progression, et rien d'autre. Tes données ne sont ni vendues, ni utilisées pour de la publicité ou du profilage.</p></section>
+
+<section><h2>Qui est responsable ?</h2>
+<p>La salle de jeux est un projet personnel et non commercial, tenu par son créateur. Pour toute question ou demande, réponds simplement à n'importe quel e-mail reçu de la salle de jeux.</p></section>
+
+<section><h2>Ce que nous enregistrons</h2>
+<ul>
+<li>Ton adresse e-mail et ton mot de passe (le mot de passe est conservé sous forme chiffrée, personne ne peut le lire).</li>
+<li>Pour chaque enfant ajouté par le parent : un prénom (ou un surnom, tu peux ne pas mettre le vrai) et un niveau scolaire.</li>
+<li>La progression et l'historique des parties de chaque enfant (jeu, score, date).</li>
+<li>La date et la version de la politique que tu as acceptée.</li>
+</ul>
+<p>Les enfants n'ont pas de compte : seul le parent se connecte. Aucun nom de famille, aucune photo, aucune adresse postale n'est demandé. Nous te conseillons de n'utiliser qu'un prénom ou un surnom.</p></section>
+
+<section><h2>Pourquoi</h2>
+<p>Uniquement pour te connecter, afficher les enfants, proposer des jeux adaptés à leur niveau et conserver leur progression. Base légale : ton consentement, donné à l'inscription.</p></section>
+
+<section><h2>Qui héberge et traite les données</h2>
+<ul>
+<li>Supabase : base de données et authentification.</li>
+<li>GitHub Pages : hébergement des pages du site.</li>
+<li>Gmail : envoi des e-mails de confirmation et de réinitialisation du mot de passe.</li>
+<li>Cloudflare Turnstile : vérification anti-robot à la connexion et à l'inscription (quand elle est activée).</li>
+</ul>
+<p>Certains de ces prestataires sont situés hors de l'Union européenne, notamment aux États-Unis.</p></section>
+
+<section><h2>Combien de temps</h2>
+<p>Tant que ton compte existe. Tu peux le supprimer à tout moment, ce qui efface définitivement le compte, les enfants et tout l'historique. Un compte inutilisé depuis plus de deux ans pourra être supprimé.</p></section>
+
+<section><h2>Tes droits</h2>
+<p>Tu peux accéder à tes données, les corriger (les prénoms et niveaux se modifient dans la salle), les supprimer, retirer ton consentement ou demander une copie. Le bouton « Supprimer mon compte », en bas de la salle, efface tout immédiatement. Pour le reste, réponds à un e-mail reçu de la salle de jeux. Tu peux aussi saisir la CNIL (cnil.fr).</p></section>
+
+<section><h2>Cookies et stockage</h2>
+<p>Le site ne dépose ni cookie publicitaire ni outil de mesure d'audience. Le navigateur garde seulement ce qui est indispensable : ta session de connexion et l'enfant choisi sur cet appareil. Pour cette raison, aucune bannière de cookies n'est nécessaire. Les polices et bibliothèques sont hébergées sur le site lui-même.</p></section>
+
+<section><h2>Sécurité</h2>
+<p>Connexion chiffrée (HTTPS), mots de passe chiffrés, et règles d'accès qui empêchent un parent de voir les données d'un autre.</p></section>
+</main>
+</body>
+</html>
