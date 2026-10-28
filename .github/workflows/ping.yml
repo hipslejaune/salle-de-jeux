@@ -1,0 +1,24 @@
+# Empêche la mise en pause de la base Supabase (plan gratuit : pause après 7 jours sans activité).
+# Appelle la fonction publique « ping » tous les 3 jours. La clé ci-dessous est la clé PUBLIQUE (publishable).
+name: Ping base de données
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Appeler ping
+        run: |
+          code=$(curl -sS -o /tmp/reponse.txt -w '%{http_code}' --retry 3 --retry-delay 10 \
+            -X POST 'https://gjqufcsznhfimnnprion.supabase.co/rest/v1/rpc/ping' \
+            -H 'apikey: sb_publishable_q5JqM7-S4GLs9rmH-_DDLA_1Y6RrozB' \
+            -H 'Content-Type: application/json' -d '{}')
+          echo "HTTP $code"; cat /tmp/reponse.txt; echo
+          [ "$code" = "200" ] || [ "$code" = "204" ]
