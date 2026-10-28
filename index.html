@@ -1,62 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Salle de jeux</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-/* Layout: three big square game tiles, centered grid, wrapping to one column on phones */
+/* Mise en page : écran de connexion centré, puis salle avec la barre des enfants au-dessus des carrés de jeux */
 :root{
   --bg:#f3f1fb; --fg:#1f1b3a; --muted:#5d5880;
-  --mult-a:#3b5bdb; --mult-b:#7048e8;
-  --add-a:#f59f00; --add-b:#e03131;
-  --nin-a:#2b8a3e; --nin-b:#1b1f2a;
+  --card:#ffffff; --line:#d9d4f0; --accent:#f08c00; --accent-dk:#b36200; --accent-fg:#ffffff;
+  --indigo:#3b2f8f; --indigo-soft:#e7e3fb;
+  --ok:#2b8a3e; --ok-bg:#e3f6e8; --err:#c92a2a; --err-bg:#fde8e8;
   --font:'Fredoka','Trebuchet MS','Segoe UI',system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){--bg:#15132a;--fg:#f1eefc;--muted:#a9a3cf;color-scheme:dark}
+  :root:not([data-theme="light"]){
+    --bg:#15132a; --fg:#f1eefc; --muted:#a9a3cf; --card:#201c44; --line:#3a3470;
+    --indigo:#b8aeff; --indigo-soft:#2f2a64; --ok:#69db7c; --ok-bg:#16301f; --err:#ff8787; --err-bg:#3a1a1f;
+    color-scheme:dark;
+  }
 }
-:root[data-theme="dark"]{--bg:#15132a;--fg:#f1eefc;--muted:#a9a3cf;color-scheme:dark}
+:root[data-theme="dark"]{
+  --bg:#15132a; --fg:#f1eefc; --muted:#a9a3cf; --card:#201c44; --line:#3a3470;
+  --indigo:#b8aeff; --indigo-soft:#2f2a64; --ok:#69db7c; --ok-bg:#16301f; --err:#ff8787; --err-bg:#3a1a1f;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
 body{
-  background:var(--bg);color:var(--fg);font-family:var(--font);
-  padding-block:32px 48px;
+  margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);
+  padding-block:28px 48px;
   padding-left:max(16px,env(safe-area-inset-left,0px));
   padding-right:max(16px,env(safe-area-inset-right,0px));
 }
-main{max-width:1000px;margin:0 auto}
+main,.centre{max-width:1000px;margin:0 auto}
 h1{font-size:clamp(2rem,6vw,3.25rem);font-weight:700;margin:0 0 6px;text-wrap:balance}
-.sub{color:var(--muted);font-size:1.15rem;margin:0 0 28px}
+h2{font-size:1.35rem;margin:0 0 12px}
+.sub{color:var(--muted);font-size:1.15rem;margin:0 0 24px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:4px solid var(--indigo);outline-offset:3px}
+
+/* Chargement */
+#chargement{text-align:center;color:var(--muted);font-size:1.2rem;padding-top:20vh}
+
+/* Écrans de connexion */
+.auth{max-width:460px;margin:0 auto}
+.auth .bandeau{display:block;width:100%;height:auto;border-radius:22px 22px 0 0;background:var(--indigo)}
+.carte{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:24px}
+.auth .carte{border-radius:0 0 22px 22px;border-top:0}
+.auth h1{font-size:1.9rem;margin-top:18px;text-align:center}
+.onglets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.onglet{border:2px solid var(--line);background:transparent;border-radius:14px;padding:10px;font-weight:600;cursor:pointer}
+.onglet[aria-selected="true"]{background:var(--indigo);border-color:var(--indigo);color:#fff}
+:root[data-theme="dark"] .onglet[aria-selected="true"]{color:#15132a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .onglet[aria-selected="true"]{color:#15132a}}
+label{display:block;font-weight:600;margin:0 0 6px}
+.champ{margin-bottom:14px}
+input[type=text],input[type=email],input[type=password],select{
+  width:100%;min-height:48px;padding:10px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);font-size:1.05rem
+}
+.aide{font-size:.9rem;color:var(--muted);margin:6px 0 0}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 22px;
+  border:0;border-radius:14px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:1.05rem;cursor:pointer;
+  box-shadow:0 5px 0 var(--accent-dk)
+}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--accent-dk)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn.plein{width:100%}
+.btn.discret{background:transparent;color:var(--fg);border:2px solid var(--line);box-shadow:none;font-weight:600}
+.btn.discret:active{transform:none}
+.btn.danger{background:var(--err);color:#fff;box-shadow:none}
+.lien{background:none;border:0;padding:6px 0;color:var(--indigo);text-decoration:underline;cursor:pointer;font-weight:600}
+.msg{margin:0 0 14px;padding:10px 14px;border-radius:12px;font-weight:600}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.msg.err{background:var(--err-bg);color:var(--err)}
+
+/* Salle : en-tête */
+.entete{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.entete .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.parent{color:var(--muted);font-size:.95rem;overflow-wrap:anywhere}
+.entete>div:first-child{min-width:0}
+
+/* Qui joue ? */
+.qui{margin:6px 0 26px}
+.qui h2{margin-bottom:10px}
+.enfants{display:flex;flex-wrap:wrap;gap:12px}
+.enfant{
+  display:flex;flex-direction:column;align-items:flex-start;min-width:130px;padding:12px 20px;border-radius:18px;cursor:pointer;
+  border:3px solid var(--line);background:var(--card);box-shadow:0 6px 0 var(--line);text-align:left;
+  transition:transform .08s ease, box-shadow .08s ease
+}
+.enfant .prenom{font-size:1.4rem;font-weight:700;line-height:1.2}
+.enfant .niveau{font-size:.9rem;color:var(--muted);min-height:1.1em}
+.enfant[aria-pressed="true"]{
+  background:var(--accent);border-color:var(--accent-dk);color:#fff;transform:translateY(5px);
+  box-shadow:inset 0 4px 8px rgba(0,0,0,.28),0 1px 0 var(--accent-dk)
+}
+.enfant[aria-pressed="true"] .niveau{color:#fff3d6}
+.enfant[aria-pressed="true"] .prenom::before{content:"✓ "}
+.qui.secoue .enfants{animation:secoue .4s}
+@keyframes secoue{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.vide{padding:18px;border:2px dashed var(--line);border-radius:16px;color:var(--muted)}
+
+/* Gestion des enfants */
+#gestion{margin-bottom:28px}
+.ligne{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.ligne:last-of-type{border-bottom:0}
+.ligne .boutons{display:flex;flex-wrap:wrap;gap:8px}
+.ligne .btn{min-height:44px;padding:8px 14px;font-size:.95rem;box-shadow:none}
+.ajout{margin-top:18px;padding-top:18px;border-top:2px solid var(--line)}
+@media (max-width:640px){.ligne{grid-template-columns:1fr}}
+
+/* Carrés des jeux */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:20px}
 .tile{
   aspect-ratio:1/1;max-width:100%;min-width:0;
   display:flex;flex-direction:column;justify-content:space-between;
   padding:22px;border-radius:28px;color:#fff;text-decoration:none;
   position:relative;overflow:hidden;
-  transition:transform .15s ease, box-shadow .15s ease;
+  transition:transform .15s ease, box-shadow .15s ease, filter .2s ease;
   box-shadow:0 8px 0 rgba(0,0,0,.22);
 }
 .tile:hover,.tile:focus-visible{transform:translateY(-4px) rotate(-.6deg);box-shadow:0 12px 0 rgba(0,0,0,.22)}
 .tile:active{transform:translateY(4px);box-shadow:0 3px 0 rgba(0,0,0,.22)}
 .tile:focus-visible{outline:4px solid var(--fg);outline-offset:4px}
 .tile{background-size:cover;background-position:center;background-color:#1b1f2a}
+.tile[aria-disabled="true"]{filter:grayscale(1) brightness(.65);cursor:not-allowed}
+.tile[aria-disabled="true"]:hover{transform:none;box-shadow:0 8px 0 rgba(0,0,0,.22)}
 .mult{background-image:linear-gradient(180deg,rgba(20,16,43,.15) 0%,rgba(20,16,43,.82) 100%),url("images/fond-multiplications.jpg");background-position:center 42%}
 .add{background-image:linear-gradient(180deg,rgba(11,19,48,.15) 0%,rgba(11,19,48,.82) 100%),url("images/fond-additions.jpg");background-position:42% center}
 .nin{background-image:linear-gradient(180deg,rgba(14,17,40,.15) 0%,rgba(14,17,40,.82) 100%),url("images/fond-ninjago.jpg");background-position:60% center}
-.nin .label,.mario .label{font-size:1.7rem;font-weight:700;line-height:1.1;text-shadow:0 2px 6px rgba(0,0,0,.6)}
 .mario{background-image:linear-gradient(180deg,rgba(8,20,60,.1) 0%,rgba(8,20,60,.82) 100%),url("images/fond-mario.jpg");background-position:center}
 .diz{background-image:linear-gradient(180deg,rgba(40,30,0,.1) 0%,rgba(40,30,0,.8) 100%),url("images/fond-dizaines.jpg");background-position:center}
-.diz .label{font-size:1.7rem;font-weight:700;line-height:1.1;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+.label{font-size:1.7rem;font-weight:700;line-height:1.1;text-shadow:0 2px 6px rgba(0,0,0,.6)}
 .hint{font-size:1.05rem;opacity:.92;margin-top:4px}
-.badge{
-  align-self:flex-start;font-size:.95rem;font-weight:600;
-  background:rgba(255,255,255,.22);padding:4px 12px;border-radius:999px;
-}
-@media (prefers-reduced-motion: reduce){.tile{transition:none}}
+.badge{align-self:flex-start;font-size:.95rem;font-weight:600;background:rgba(255,255,255,.22);padding:4px 12px;border-radius:999px}
+@media (prefers-reduced-motion: reduce){.tile,.enfant{transition:none}.qui.secoue .enfants{animation:none}}
 </style>
+</head>
+<body>
 
-<main>
-  <h1>La salle de jeux</h1>
-  <p class="sub">Touche un carré pour jouer.</p>
-  <div class="grid">
+<div id="chargement" role="status">Chargement…</div>
+
+<!-- Écran : connexion / inscription / mot de passe oublié -->
+<section id="ecran-auth" class="auth" hidden>
+  <img class="bandeau" src="images/bandeau-mail.jpg" alt="" width="1200" height="360">
+  <div class="carte">
+    <h1>La salle de jeux</h1>
+    <div class="onglets" role="tablist" aria-label="Accès parent">
+      <button type="button" class="onglet" role="tab" id="onglet-connexion" aria-selected="true" aria-controls="f-connexion">Connexion</button>
+      <button type="button" class="onglet" role="tab" id="onglet-inscription" aria-selected="false" aria-controls="f-inscription">Inscription</button>
+    </div>
+    <p id="msg-auth" class="msg" role="status" hidden></p>
+
+    <form id="f-connexion" novalidate>
+      <div class="champ"><label for="c-mail">Adresse mail du parent</label>
+        <input id="c-mail" type="email" autocomplete="email" required></div>
+      <div class="champ"><label for="c-mdp">Mot de passe</label>
+        <input id="c-mdp" type="password" autocomplete="current-password" required></div>
+      <button class="btn plein" type="submit">Me connecter</button>
+      <p style="text-align:center;margin:12px 0 0"><button type="button" class="lien" id="vers-oubli">Mot de passe oublié ?</button></p>
+    </form>
+
+    <form id="f-inscription" novalidate hidden>
+      <div class="champ"><label for="i-mail">Adresse mail du parent</label>
+        <input id="i-mail" type="email" autocomplete="email" required></div>
+      <div class="champ"><label for="i-mdp">Mot de passe</label>
+        <input id="i-mdp" type="password" autocomplete="new-password" minlength="8" required>
+        <p class="aide">Au moins 8 caractères.</p></div>
+      <div class="champ"><label for="i-mdp2">Répète le mot de passe</label>
+        <input id="i-mdp2" type="password" autocomplete="new-password" required></div>
+      <button class="btn plein" type="submit">Créer mon compte</button>
+    </form>
+
+    <form id="f-oubli" novalidate hidden>
+      <h2>Mot de passe oublié</h2>
+      <p class="aide" style="margin-bottom:14px">Indique ton adresse mail : tu recevras un lien pour en choisir un nouveau.</p>
+      <div class="champ"><label for="o-mail">Adresse mail du parent</label>
+        <input id="o-mail" type="email" autocomplete="email" required></div>
+      <button class="btn plein" type="submit">Envoyer le lien</button>
+      <p style="text-align:center;margin:12px 0 0"><button type="button" class="lien" id="retour-connexion">Retour à la connexion</button></p>
+    </form>
+  </div>
+</section>
+
+<!-- Écran : choisir un nouveau mot de passe (lien reçu par mail) -->
+<section id="ecran-recup" class="auth" hidden>
+  <img class="bandeau" src="images/bandeau-mail.jpg" alt="" width="1200" height="360">
+  <div class="carte">
+    <h1>Nouveau mot de passe</h1>
+    <p id="msg-recup" class="msg" role="status" hidden></p>
+    <form id="f-recup" novalidate>
+      <div class="champ"><label for="r-mdp">Nouveau mot de passe</label>
+        <input id="r-mdp" type="password" autocomplete="new-password" minlength="8" required>
+        <p class="aide">Au moins 8 caractères.</p></div>
+      <div class="champ"><label for="r-mdp2">Répète le mot de passe</label>
+        <input id="r-mdp2" type="password" autocomplete="new-password" required></div>
+      <button class="btn plein" type="submit">Enregistrer</button>
+    </form>
+  </div>
+</section>
+
+<!-- Écran : la salle de jeux (parent connecté) -->
+<main id="ecran-salle" hidden>
+  <div class="entete">
+    <div>
+      <h1>La salle de jeux</h1>
+      <p class="parent" id="parent-mail"></p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn discret" id="btn-gerer" aria-expanded="false" aria-controls="gestion">Gérer les enfants</button>
+      <button type="button" class="btn discret" id="btn-deco">Se déconnecter</button>
+    </div>
+  </div>
+  <p id="msg-salle" class="msg" role="status" hidden></p>
+
+  <section id="gestion" class="carte" hidden aria-label="Gérer les enfants">
+    <h2>Les enfants qui jouent</h2>
+    <div id="liste-gestion"></div>
+    <form id="f-ajout" class="ajout" novalidate>
+      <h2>Ajouter un enfant</h2>
+      <div class="ligne" style="border:0;padding:0">
+        <div><label for="a-prenom">Prénom</label><input id="a-prenom" type="text" maxlength="30" autocomplete="off" required></div>
+        <div><label for="a-niveau">Niveau scolaire</label><select id="a-niveau"></select></div>
+        <div class="boutons" style="align-self:end"><button class="btn" type="submit">Ajouter</button></div>
+      </div>
+    </form>
+  </section>
+
+  <section class="qui" id="qui" aria-labelledby="titre-qui">
+    <h2 id="titre-qui">Qui joue ?</h2>
+    <div class="enfants" id="liste-enfants"></div>
+  </section>
+
+  <div class="grid" id="jeux">
     <a class="tile mult" href="https://hipslejaune.github.io/tables-multiplication/" target="_blank" rel="noopener">
       <span class="badge">Tables</span>
       <span><span class="label">Le défi des multiplications</span><div class="hint">Les tables, de plus en plus fort</div></span>
@@ -79,3 +260,305 @@ h1{font-size:clamp(2rem,6vw,3.25rem);font-weight:700;margin:0 0 6px;text-wrap:ba
     </a>
   </div>
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="salle.js"></script>
+<script>
+(function () {
+  'use strict';
+  var client = Salle.client;
+  var NIVEAUX = ['Tout-petit','PS','MS','GS','CP','CE1','CE2','CM1','CM2','6e','5e','4e','3e'];
+  var enfants = [];
+  var courant = null;      // enfant sélectionné
+  var utilisateur = null;  // id du parent affiché
+  var recuperation = false;
+
+  function $(s) { return document.querySelector(s); }
+  function el(tag, props, enfantsDom) {
+    var n = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (k) {
+      if (k === 'text') n.textContent = props[k];
+      else if (k === 'class') n.className = props[k];
+      else n.setAttribute(k, props[k]);
+    });
+    (enfantsDom || []).forEach(function (c) { n.appendChild(c); });
+    return n;
+  }
+  function montrer(id) {
+    ['chargement', 'ecran-auth', 'ecran-recup', 'ecran-salle'].forEach(function (e) { $('#' + e).hidden = (e !== id); });
+  }
+  function message(sel, texte, type) {
+    var m = $(sel);
+    if (!texte) { m.hidden = true; return; }
+    m.textContent = texte; m.className = 'msg ' + (type || 'ok'); m.hidden = false;
+  }
+  function traduire(err) {
+    var t = ((err && err.message) || '').toLowerCase();
+    if (t.indexOf('invalid login') >= 0) return 'Adresse mail ou mot de passe incorrect.';
+    if (t.indexOf('not confirmed') >= 0) return 'Confirme d\'abord ton adresse mail : regarde dans ta boîte de réception.';
+    if (t.indexOf('rate limit') >= 0 || t.indexOf('security purposes') >= 0) return 'Trop de demandes pour le moment. Réessaie dans quelques minutes.';
+    if (t.indexOf('password') >= 0 && t.indexOf('characters') >= 0) return 'Le mot de passe est trop court (8 caractères minimum).';
+    if (t.indexOf('different from the old') >= 0) return 'Choisis un mot de passe différent de l\'ancien.';
+    if (t.indexOf('signups not allowed') >= 0) return 'Les inscriptions sont fermées.';
+    if (t.indexOf('failed to fetch') >= 0 || t.indexOf('network') >= 0 || t.indexOf('load failed') >= 0)
+      return 'Le serveur ne répond pas. Réessaie dans un instant, ou demande à un parent de vérifier.';
+    return 'Une erreur est survenue : ' + ((err && err.message) || 'inconnue') + '.';
+  }
+  function occupe(bouton, oui) { bouton.disabled = oui; }
+
+  /* ---------- Onglets de l'écran de connexion ---------- */
+  function ouvrirOnglet(nom) {
+    message('#msg-auth', '');
+    $('#f-connexion').hidden = nom !== 'connexion';
+    $('#f-inscription').hidden = nom !== 'inscription';
+    $('#f-oubli').hidden = nom !== 'oubli';
+    $('#onglet-connexion').setAttribute('aria-selected', nom === 'connexion');
+    $('#onglet-inscription').setAttribute('aria-selected', nom === 'inscription');
+  }
+  $('#onglet-connexion').onclick = function () { ouvrirOnglet('connexion'); };
+  $('#onglet-inscription').onclick = function () { ouvrirOnglet('inscription'); };
+  $('#vers-oubli').onclick = function () { $('#o-mail').value = $('#c-mail').value; ouvrirOnglet('oubli'); };
+  $('#retour-connexion').onclick = function () { ouvrirOnglet('connexion'); };
+
+  function adresseRetour() { return location.origin + location.pathname; }
+
+  /* ---------- Connexion ---------- */
+  $('#f-connexion').onsubmit = async function (e) {
+    e.preventDefault();
+    var mail = $('#c-mail').value.trim(), mdp = $('#c-mdp').value;
+    if (!mail || !mdp) return message('#msg-auth', 'Renseigne ton adresse mail et ton mot de passe.', 'err');
+    var b = e.submitter; occupe(b, true); message('#msg-auth', '');
+    try {
+      var r = await client.auth.signInWithPassword({ email: mail, password: mdp });
+      if (r.error) message('#msg-auth', traduire(r.error), 'err');
+    } catch (err) { message('#msg-auth', traduire(err), 'err'); }
+    occupe(b, false);
+  };
+
+  /* ---------- Inscription ---------- */
+  $('#f-inscription').onsubmit = async function (e) {
+    e.preventDefault();
+    var mail = $('#i-mail').value.trim(), mdp = $('#i-mdp').value, mdp2 = $('#i-mdp2').value;
+    if (!mail) return message('#msg-auth', 'Renseigne ton adresse mail.', 'err');
+    if (mdp.length < 8) return message('#msg-auth', 'Le mot de passe doit faire au moins 8 caractères.', 'err');
+    if (mdp !== mdp2) return message('#msg-auth', 'Les deux mots de passe ne sont pas identiques.', 'err');
+    var b = e.submitter; occupe(b, true); message('#msg-auth', '');
+    try {
+      var r = await client.auth.signUp({ email: mail, password: mdp, options: { emailRedirectTo: adresseRetour() } });
+      if (r.error) message('#msg-auth', traduire(r.error), 'err');
+      else if (!r.data.session) {
+        $('#c-mail').value = mail; ouvrirOnglet('connexion');
+        message('#msg-auth', 'Presque fini ! Clique sur le lien dans le mail que tu viens de recevoir pour activer ton compte.', 'ok');
+      }
+    } catch (err) { message('#msg-auth', traduire(err), 'err'); }
+    occupe(b, false);
+  };
+
+  /* ---------- Mot de passe oublié ---------- */
+  $('#f-oubli').onsubmit = async function (e) {
+    e.preventDefault();
+    var mail = $('#o-mail').value.trim();
+    if (!mail) return message('#msg-auth', 'Renseigne ton adresse mail.', 'err');
+    var b = e.submitter; occupe(b, true); message('#msg-auth', '');
+    try {
+      var r = await client.auth.resetPasswordForEmail(mail, { redirectTo: adresseRetour() });
+      if (r.error) message('#msg-auth', traduire(r.error), 'err');
+      else message('#msg-auth', 'Si un compte existe avec cette adresse, un mail vient d\'être envoyé. Pense à regarder les courriers indésirables.', 'ok');
+    } catch (err) { message('#msg-auth', traduire(err), 'err'); }
+    occupe(b, false);
+  };
+
+  /* ---------- Nouveau mot de passe (après le lien du mail) ---------- */
+  $('#f-recup').onsubmit = async function (e) {
+    e.preventDefault();
+    var mdp = $('#r-mdp').value, mdp2 = $('#r-mdp2').value;
+    if (mdp.length < 8) return message('#msg-recup', 'Le mot de passe doit faire au moins 8 caractères.', 'err');
+    if (mdp !== mdp2) return message('#msg-recup', 'Les deux mots de passe ne sont pas identiques.', 'err');
+    var b = e.submitter; occupe(b, true); message('#msg-recup', '');
+    try {
+      var r = await client.auth.updateUser({ password: mdp });
+      if (r.error) message('#msg-recup', traduire(r.error), 'err');
+      else {
+        recuperation = false;
+        var s = await client.auth.getSession();
+        if (s.data.session) await ouvrirSalle(s.data.session);
+        message('#msg-salle', 'Ton nouveau mot de passe est enregistré.', 'ok');
+      }
+    } catch (err) { message('#msg-recup', traduire(err), 'err'); }
+    occupe(b, false);
+  };
+
+  /* ---------- Déconnexion ---------- */
+  $('#btn-deco').onclick = async function () {
+    try { await client.auth.signOut(); } catch (e) { /* on nettoie quand même */ }
+    sortir();
+  };
+  function sortir() {
+    Salle.choisirEnfant(null);
+    enfants = []; courant = null; utilisateur = null;
+    $('#c-mdp').value = '';
+    ouvrirOnglet('connexion');
+    montrer('ecran-auth');
+  }
+
+  /* ---------- La salle ---------- */
+  async function ouvrirSalle(session) {
+    utilisateur = session.user.id;
+    $('#parent-mail').textContent = 'Connecté : ' + (session.user.email || '');
+    message('#msg-salle', '');
+    montrer('ecran-salle');
+    await chargerEnfants();
+  }
+
+  async function chargerEnfants() {
+    try {
+      var r = await client.from('enfants').select('id,prenom,niveau').order('created_at', { ascending: true });
+      if (r.error) throw r.error;
+      enfants = r.data || [];
+    } catch (err) {
+      message('#msg-salle', traduire(err), 'err');
+      enfants = [];
+    }
+    var memo = Salle.enfantCourant();
+    courant = null;
+    if (memo) {
+      for (var i = 0; i < enfants.length; i++) if (enfants[i].id === memo.id) courant = enfants[i];
+    }
+    Salle.choisirEnfant(courant);
+    dessiner();
+    if (!enfants.length) { $('#gestion').hidden = false; $('#btn-gerer').setAttribute('aria-expanded', 'true'); }
+  }
+
+  function dessiner() {
+    // Boutons « Qui joue ? »
+    var zone = $('#liste-enfants'); zone.textContent = '';
+    if (!enfants.length) {
+      zone.appendChild(el('p', { class: 'vide', text: 'Ajoute le prénom d\'un enfant avec « Gérer les enfants » pour commencer à jouer.' }));
+    }
+    enfants.forEach(function (en) {
+      var b = el('button', { type: 'button', class: 'enfant', 'aria-pressed': String(courant && courant.id === en.id) }, [
+        el('span', { class: 'prenom', text: en.prenom }),
+        el('span', { class: 'niveau', text: en.niveau || '' })
+      ]);
+      b.onclick = function () {
+        courant = (courant && courant.id === en.id) ? null : en;
+        Salle.choisirEnfant(courant);
+        message('#msg-salle', '');
+        dessiner();
+      };
+      zone.appendChild(b);
+    });
+    // Carrés des jeux
+    var actif = !!courant;
+    Array.prototype.forEach.call(document.querySelectorAll('#jeux .tile'), function (t) {
+      if (actif) t.removeAttribute('aria-disabled'); else t.setAttribute('aria-disabled', 'true');
+    });
+    dessinerGestion();
+  }
+
+  $('#jeux').addEventListener('click', function (e) {
+    var t = e.target.closest('.tile');
+    if (t && t.getAttribute('aria-disabled') === 'true') {
+      e.preventDefault();
+      var q = $('#qui'); q.classList.remove('secoue'); void q.offsetWidth; q.classList.add('secoue');
+      message('#msg-salle', enfants.length ? 'Choisis d\'abord qui joue en touchant un prénom.' : 'Ajoute d\'abord un enfant avec « Gérer les enfants ».', 'err');
+    }
+  });
+
+  /* ---------- Gestion des enfants ---------- */
+  function optionsNiveau(select, valeur) {
+    select.textContent = '';
+    select.appendChild(el('option', { value: '', text: 'Non précisé' }));
+    NIVEAUX.forEach(function (n) {
+      var o = el('option', { value: n, text: n }); if (n === valeur) o.selected = true; select.appendChild(o);
+    });
+  }
+  optionsNiveau($('#a-niveau'), '');
+
+  $('#btn-gerer').onclick = function () {
+    var g = $('#gestion'); g.hidden = !g.hidden;
+    $('#btn-gerer').setAttribute('aria-expanded', String(!g.hidden));
+    if (!g.hidden) $('#gestion').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+
+  function dessinerGestion() {
+    var liste = $('#liste-gestion'); liste.textContent = '';
+    enfants.forEach(function (en) {
+      var prenom = el('input', { type: 'text', maxlength: '30', 'aria-label': 'Prénom', value: en.prenom });
+      var niveau = el('select', { 'aria-label': 'Niveau scolaire' }); optionsNiveau(niveau, en.niveau);
+      var enreg = el('button', { type: 'button', class: 'btn', text: 'Enregistrer' });
+      var suppr = el('button', { type: 'button', class: 'btn discret', text: 'Supprimer' });
+      var boutons = el('div', { class: 'boutons' }, [enreg, suppr]);
+
+      enreg.onclick = async function () {
+        var p = prenom.value.trim();
+        if (!p) return message('#msg-salle', 'Le prénom ne peut pas être vide.', 'err');
+        occupe(enreg, true);
+        try {
+          var r = await client.from('enfants').update({ prenom: p, niveau: niveau.value || null }).eq('id', en.id);
+          if (r.error) throw r.error;
+          message('#msg-salle', 'Modifications enregistrées pour ' + p + '.', 'ok');
+          await chargerEnfants();
+        } catch (err) { message('#msg-salle', traduire(err), 'err'); occupe(enreg, false); }
+      };
+      suppr.onclick = function () {
+        // Confirmation dans la page : un second clic est nécessaire
+        boutons.textContent = '';
+        var oui = el('button', { type: 'button', class: 'btn danger', text: 'Oui, supprimer ' + en.prenom + ' et son historique' });
+        var non = el('button', { type: 'button', class: 'btn discret', text: 'Annuler' });
+        non.onclick = dessinerGestion;
+        oui.onclick = async function () {
+          occupe(oui, true);
+          try {
+            var r = await client.from('enfants').delete().eq('id', en.id);
+            if (r.error) throw r.error;
+            message('#msg-salle', en.prenom + ' a été supprimé.', 'ok');
+            await chargerEnfants();
+          } catch (err) { message('#msg-salle', traduire(err), 'err'); dessinerGestion(); }
+        };
+        boutons.appendChild(oui); boutons.appendChild(non);
+      };
+      liste.appendChild(el('div', { class: 'ligne' }, [prenom, niveau, boutons]));
+    });
+  }
+
+  $('#f-ajout').onsubmit = async function (e) {
+    e.preventDefault();
+    var p = $('#a-prenom').value.trim();
+    if (!p) return message('#msg-salle', 'Écris le prénom de l\'enfant.', 'err');
+    var b = e.submitter; occupe(b, true);
+    try {
+      var r = await client.from('enfants').insert({ prenom: p, niveau: $('#a-niveau').value || null });
+      if (r.error) throw r.error;
+      $('#a-prenom').value = ''; $('#a-niveau').value = '';
+      message('#msg-salle', p + ' a été ajouté.', 'ok');
+      await chargerEnfants();
+    } catch (err) { message('#msg-salle', traduire(err), 'err'); }
+    occupe(b, false);
+  };
+
+  /* ---------- Démarrage ---------- */
+  client.auth.onAuthStateChange(function (event, session) {
+    // Pas d'appel Supabase directement ici : on le décale pour éviter un blocage
+    setTimeout(function () {
+      if (event === 'PASSWORD_RECOVERY') { recuperation = true; montrer('ecran-recup'); return; }
+      if (event === 'SIGNED_OUT') { sortir(); return; }
+      if (event === 'SIGNED_IN' && session && !recuperation && utilisateur !== session.user.id) ouvrirSalle(session);
+    }, 0);
+  });
+
+  (async function demarrer() {
+    try {
+      var r = await client.auth.getSession();
+      if (recuperation) return;
+      if (r.data && r.data.session) await ouvrirSalle(r.data.session);
+      else montrer('ecran-auth');
+    } catch (err) {
+      montrer('ecran-auth');
+      message('#msg-auth', traduire(err), 'err');
+    }
+  })();
+})();
+</script>
+</body>
+</html>
