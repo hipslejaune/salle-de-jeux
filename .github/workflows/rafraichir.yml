@@ -1,0 +1,31 @@
+# Garde le dépôt « actif » : GitHub désactive les actions programmées d'un dépôt public après 60 jours sans activité.
+# Une fois par mois : un petit commit de date + réactivation du ping de la base.
+name: Rafraîchissement mensuel
+
+on:
+  schedule:
+    - cron: '41 5 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  rafraichir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Commit de rafraîchissement
+        run: |
+          date -u +"Dernier rafraîchissement automatique : %Y-%m-%d" > .github/dernier-rafraichissement.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/dernier-rafraichissement.txt
+          git commit -m "Rafraîchissement mensuel automatique" || echo "rien à valider"
+          git push
+      - name: Réactiver le ping de la base si besoin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/ping.yml/enable" || true
