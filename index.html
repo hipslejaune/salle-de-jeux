@@ -252,6 +252,7 @@ select option{background:var(--sheet);color:var(--tx)}
     </div>
     <div class="actions">
       <button type="button" class="btn ghost petit" id="btn-gerer" aria-haspopup="dialog" aria-expanded="false">Gérer les enfants</button>
+      <button type="button" class="btn ghost petit" id="btn-admin" aria-haspopup="dialog" hidden>Administration</button>
       <button type="button" class="btn ghost petit rose" id="btn-deco">Se déconnecter</button>
     </div>
   </div>
@@ -323,6 +324,23 @@ select option{background:var(--sheet);color:var(--tx)}
       </div>
       <button class="btn" type="submit">Ajouter</button>
     </form>
+  </div>
+</div>
+
+<!-- Fenêtre : administration (visible seulement pour le compte administrateur ; contrôlée côté base) -->
+<div class="sheet" id="admin" hidden>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="titre-admin">
+    <div class="sheet-tete">
+      <h2 id="titre-admin">Administration</h2>
+      <button type="button" class="btn ghost petit" id="fermer-admin">Fermer</button>
+    </div>
+    <p id="msg-admin" class="msg" role="status" hidden></p>
+    <form id="f-admin" class="ajout" novalidate style="border-top:0;padding-top:0">
+      <div><label for="admin-mdp">Code d'administration</label>
+      <input id="admin-mdp" type="password" inputmode="numeric" autocomplete="off" required></div>
+      <button class="btn" type="submit">Afficher les comptes</button>
+    </form>
+    <div id="admin-liste" hidden></div>
   </div>
 </div>
 
@@ -511,7 +529,7 @@ select option{background:var(--sheet);color:var(--tx)}
   };
   function sortir() {
     Salle.choisirEnfant(null);
-    enfants = []; courant = null; utilisateur = null;
+    enfants = []; courant = null; utilisateur = null; $('#btn-admin').hidden = true; fermerAdmin();
     $('#c-mdp').value = '';
     ouvrirOnglet('connexion');
     montrer('ecran-auth');
@@ -546,6 +564,7 @@ select option{background:var(--sheet);color:var(--tx)}
     $('#parent-mail').textContent = session.user.email || '';
     message('#msg-salle', ''); $('#suppr-compte').hidden = true;
     montrer('ecran-salle');
+    verifierAdmin();
     await chargerEnfants();
   }
 
@@ -629,6 +648,53 @@ select option{background:var(--sheet);color:var(--tx)}
     message('#msg-gestion', '');
   }
   $('#btn-gerer').onclick = ouvrirGestion;
+
+  /* ---------- Administration : tout est vérifié côté base (compte administrateur + code stocké chiffré) ---------- */
+  function fermerAdmin() {
+    $('#admin').hidden = true; $('#admin-mdp').value = ''; $('#admin-liste').textContent = ''; $('#admin-liste').hidden = true;
+    $('#f-admin').hidden = false; message('#msg-admin', '');
+    document.documentElement.style.overflow = '';
+  }
+  async function verifierAdmin() {
+    $('#btn-admin').hidden = true;
+    try {
+      var r = await client.rpc('est_admin');
+      if (!r.error && r.data === true) $('#btn-admin').hidden = false;
+    } catch (e) { /* pas d'administration : le bouton reste caché */ }
+  }
+  $('#btn-admin').onclick = function () {
+    fermerAdmin(); $('#admin').hidden = false; document.documentElement.style.overflow = 'hidden'; $('#admin-mdp').focus();
+  };
+  $('#fermer-admin').onclick = fermerAdmin;
+  $('#admin').addEventListener('click', function (e) { if (e.target.id === 'admin') fermerAdmin(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#admin').hidden) fermerAdmin(); });
+  function jour(iso) { return iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'jamais'; }
+  $('#f-admin').onsubmit = async function (e) {
+    e.preventDefault();
+    var code = $('#admin-mdp').value;
+    if (!code) return message('#msg-admin', 'Saisis le code d\'administration.', 'err');
+    var b = e.submitter; occupe(b, true); message('#msg-admin', '');
+    try {
+      var r = await client.rpc('admin_liste_comptes', { mot_de_passe: code });
+      if (r.error) throw r.error;
+      if (!r.data || r.data.ok !== true) { message('#msg-admin', (r.data && r.data.message) || 'Accès refusé.', 'err'); $('#admin-mdp').value = ''; }
+      else {
+        $('#admin-mdp').value = ''; $('#f-admin').hidden = true;
+        var comptes = r.data.comptes || [], liste = $('#admin-liste'); liste.textContent = ''; liste.hidden = false;
+        var il30 = Date.now() - 30 * 864e5, actifs = comptes.filter(function (c) { return c.derniere_connexion && new Date(c.derniere_connexion).getTime() > il30; }).length;
+        var enfantsTot = comptes.reduce(function (a, c) { return a + (c.nb_enfants || 0); }, 0);
+        liste.appendChild(el('div', { class: 'lab', style: 'margin:0 2px 10px', text: comptes.length + ' compte' + (comptes.length > 1 ? 's' : '') + ' · ' + actifs + ' actif' + (actifs > 1 ? 's' : '') + ' ce mois-ci · ' + enfantsTot + ' enfant' + (enfantsTot > 1 ? 's' : '') }));
+        comptes.forEach(function (c) {
+          liste.appendChild(el('div', { class: 'ligne', style: 'display:block' }, [
+            el('div', { style: 'font-weight:700;word-break:break-all', text: c.email || '(sans e-mail)' }),
+            el('div', { class: 'sub', text: 'Créé le ' + jour(c.cree_le) + ' · dernière connexion : ' + jour(c.derniere_connexion) + (c.confirme ? '' : ' · e-mail non confirmé') }),
+            el('div', { class: 'sub', text: (c.nb_enfants || 0) + ' enfant' + (c.nb_enfants > 1 ? 's' : '') + ' · ' + (c.nb_parties || 0) + ' partie' + (c.nb_parties > 1 ? 's' : '') + ' · dernière partie : ' + jour(c.derniere_partie) })
+          ]));
+        });
+      }
+    } catch (err) { message('#msg-admin', traduire(err), 'err'); }
+    occupe(b, false);
+  };
   $('#fermer-gestion').onclick = fermerGestion;
   $('#gestion').addEventListener('click', function (e) { if (e.target.id === 'gestion') fermerGestion(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#gestion').hidden) fermerGestion(); });
