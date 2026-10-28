@@ -76,7 +76,13 @@
     var p = el('p', { 'class': 'sj-bienvenue' });
     p.appendChild(document.createTextNode('Bienvenue '));
     p.appendChild(el('b', {}, enfant.prenom));
-    if (titre && titre.parentNode) titre.parentNode.insertBefore(p, titre.nextSibling);
+    if (titre && titre.parentNode) {
+      var parent = titre.parentNode, mode = getComputedStyle(parent).display;
+      if (/flex|grid/.test(mode)) {          // le titre est dans une rangée : on le groupe avec la mention pour qu'elle reste dessous
+        var groupe = el('div', { 'class': 'sj-titre' });
+        parent.insertBefore(groupe, titre); groupe.appendChild(titre); groupe.appendChild(p);
+      } else { parent.insertBefore(p, titre.nextSibling); }
+    }
     else barre.insertAdjacentElement('afterend', p);
   }
 
