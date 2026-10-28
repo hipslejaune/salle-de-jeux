@@ -120,12 +120,11 @@ select option{background:var(--sheet);color:var(--tx)}
   border:1px solid rgba(255,255,255,.12);border-bottom:0;border-radius:24px 24px 0 0;
   padding:20px 18px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px
 }
-@supports (height:1dvh){.sheet-panel{max-height:90dvh}}
-@media (min-width:700px){
-  .sheet{align-items:center;padding:24px}
-  .sheet-panel{border-bottom:1px solid rgba(255,255,255,.12);border-radius:24px;padding-bottom:24px;max-height:min(86vh,760px);box-shadow:0 24px 80px rgba(0,0,0,.5)}
-  @supports (height:1dvh){.sheet-panel{max-height:min(86dvh,760px)}}
-}
+/* Fenêtres centrées sur tous les écrans, avec une marge autour et un défilement interne si le contenu est long */
+.sheet{align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet-panel{border-bottom:1px solid rgba(255,255,255,.12);border-radius:24px;padding-bottom:22px;max-height:calc(100vh - 32px);box-shadow:0 24px 80px rgba(0,0,0,.5)}
+@supports (height:1dvh){.sheet-panel{max-height:calc(100dvh - 32px)}}
+@media (min-width:700px){.sheet-panel{max-height:min(86vh,760px)}@supports (height:1dvh){.sheet-panel{max-height:min(86dvh,760px)}}}
 .sheet-tete{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .ligne{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:14px 0;border-top:1px solid var(--line)}
 .ligne .boutons{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
