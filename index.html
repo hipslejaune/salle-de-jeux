@@ -84,6 +84,7 @@ select option{background:var(--sheet);color:var(--tx)}
 .msg{margin:0 0 14px;padding:10px 14px;border-radius:14px;font-weight:500;font-size:14px;border:1px solid transparent}
 .msg.ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
 .msg.err{background:var(--err-bg);color:var(--err);border-color:var(--err-line)}
+.msg.info{background:rgba(79,209,255,.12);color:var(--cy-lt);border-color:rgba(79,209,255,.4)}
 
 /* Salle : en-tête et boutons du haut */
 .entete{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
@@ -254,6 +255,7 @@ select option{background:var(--sheet);color:var(--tx)}
       <button type="button" class="btn ghost petit rose" id="btn-deco">Se déconnecter</button>
     </div>
   </div>
+  <p id="alerte-qui" class="msg info" role="status" hidden></p>
   <p id="msg-salle" class="msg" role="status" hidden></p>
 
   <section class="qui" id="qui" aria-labelledby="titre-qui">
@@ -312,6 +314,7 @@ select option{background:var(--sheet);color:var(--tx)}
     </div>
     <p id="msg-gestion" class="msg" role="status" hidden></p>
     <div id="liste-gestion"></div>
+    <p class="sub" id="aide-gestion" style="margin:4px 2px 10px">Pour modifier un prénom ou un niveau, change-le directement : c'est enregistré tout seul.</p>
     <form id="f-ajout" class="ajout" novalidate>
       <div class="lab" style="margin:0 2px">Ajouter un enfant</div>
       <div class="ligne">
@@ -565,7 +568,7 @@ select option{background:var(--sheet);color:var(--tx)}
     if (!enfants.length) ouvrirGestion();
   }
 
-  function dessiner() {
+  function dessiner(sansGestion) {
     // Boutons « Qui joue ? »
     var zone = $('#liste-enfants'); zone.textContent = '';
     if (!enfants.length) {
@@ -585,12 +588,14 @@ select option{background:var(--sheet);color:var(--tx)}
       };
       zone.appendChild(b);
     });
+    // Rappel en haut tant qu'aucun enfant n'est choisi
+    message('#alerte-qui', courant ? '' : (enfants.length ? 'Choisis d\'abord qui joue : touche un prénom ci-dessous, puis un jeu.' : 'Ajoute d\'abord un enfant avec « Gérer les enfants » pour commencer à jouer.'), 'info');
     // Carrés des jeux
     var actif = !!courant;
     Array.prototype.forEach.call(document.querySelectorAll('#jeux .tile'), function (t) {
       if (actif) t.removeAttribute('aria-disabled'); else t.setAttribute('aria-disabled', 'true');
     });
-    dessinerGestion();
+    if (!sansGestion) dessinerGestion();
   }
 
   $('#jeux').addEventListener('click', function (e) {
@@ -630,24 +635,30 @@ select option{background:var(--sheet);color:var(--tx)}
 
   function dessinerGestion() {
     var liste = $('#liste-gestion'); liste.textContent = '';
+    $('#aide-gestion').hidden = !enfants.length;
     enfants.forEach(function (en) {
       var prenom = el('input', { type: 'text', maxlength: '30', 'aria-label': 'Prénom', value: en.prenom });
       var niveau = el('select', { 'aria-label': 'Niveau scolaire' }); optionsNiveau(niveau, en.niveau);
-      var enreg = el('button', { type: 'button', class: 'btn petit', text: 'Enregistrer' });
       var suppr = el('button', { type: 'button', class: 'btn ghost petit rose', text: 'Supprimer' });
-      var boutons = el('div', { class: 'boutons' }, [enreg, suppr]);
+      var boutons = el('div', { class: 'boutons' }, [suppr]);
 
-      enreg.onclick = async function () {
+      // Pas de bouton « Enregistrer » : chaque modification est enregistrée toute seule
+      async function enregistrer() {
         var p = prenom.value.trim();
-        if (!p) return message('#msg-gestion', 'Le prénom ne peut pas être vide.', 'err');
-        occupe(enreg, true);
+        if (!p) { prenom.value = en.prenom; return message('#msg-gestion', 'Le prénom ne peut pas être vide.', 'err'); }
+        if (p === en.prenom && (niveau.value || null) === (en.niveau || null)) return;
         try {
           var r = await client.from('enfants').update({ prenom: p, niveau: niveau.value || null }).eq('id', en.id);
           if (r.error) throw r.error;
-          await chargerEnfants();
-          message('#msg-gestion', 'Modifications enregistrées pour ' + p + '.', 'ok');
-        } catch (err) { message('#msg-gestion', traduire(err), 'err'); occupe(enreg, false); }
-      };
+          en.prenom = p; en.niveau = niveau.value || null;
+          if (courant && courant.id === en.id) Salle.choisirEnfant(en);
+          dessiner(true);                       // met à jour les boutons du haut sans refaire cette liste
+          message('#msg-gestion', 'Modifié : ' + p + '.', 'ok');
+        } catch (err) { message('#msg-gestion', traduire(err), 'err'); }
+      }
+      prenom.addEventListener('change', enregistrer);
+      niveau.addEventListener('change', enregistrer);
+      prenom.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); prenom.blur(); } });
       suppr.onclick = function () {
         // Confirmation dans la page : un second clic est nécessaire
         boutons.textContent = '';
@@ -675,11 +686,14 @@ select option{background:var(--sheet);color:var(--tx)}
     if (!p) return message('#msg-gestion', 'Écris le prénom de l\'enfant.', 'err');
     var b = e.submitter; occupe(b, true);
     try {
-      var r = await client.from('enfants').insert({ prenom: p, niveau: $('#a-niveau').value || null });
+      var premier = !enfants.length, niv = $('#a-niveau').value || null;
+      var r = await client.from('enfants').insert({ prenom: p, niveau: niv }).select('id').single();
       if (r.error) throw r.error;
       $('#a-prenom').value = ''; $('#a-niveau').value = '';
+      Salle.choisirEnfant({ id: r.data.id, prenom: p, niveau: niv });   // l'enfant ajouté est directement celui qui joue
       await chargerEnfants();
-      message('#msg-gestion', p + ' a été ajouté.', 'ok');
+      if (premier) { fermerGestion(); message('#msg-salle', p + ' est prêt(e) à jouer : touche un carré !', 'ok'); }
+      else message('#msg-gestion', p + ' a été ajouté(e) et choisi(e) pour jouer.', 'ok');
     } catch (err) { message('#msg-gestion', traduire(err), 'err'); }
     occupe(b, false);
   };

@@ -10,6 +10,7 @@
   racine.style.visibility = 'hidden';        // rien ne s'affiche tant que l'accès n'est pas vérifié
 
   var jeu = null, client = null, enfant = null;
+  var derniereErreur = '';
   var progAttente = null, progMinuterie = null, retour = null, parties = [], envoiEnCours = false;
 
   function charger(src) {
@@ -96,7 +97,8 @@
         { enfant_id: enfant.id, jeu: jeu, etat: etat, updated_at: new Date().toISOString() },
         { onConflict: 'enfant_id,jeu' });
       ok = !r.error;
-    } catch (e) { ok = false; }
+      if (r.error) noterErreur('progression', r.error);
+    } catch (e) { ok = false; noterErreur('progression', e); }
     if (!ok) { if (!progAttente) progAttente = etat; planifierRetour(); }
     else if (!parties.length && !progAttente) afficherEtat('Enregistré', false);
   }
@@ -111,11 +113,16 @@
         parties.shift();
       }
       if (!progAttente) afficherEtat('Enregistré', false);
-    } catch (e) { planifierRetour(); }
+    } catch (e) { noterErreur('parties', e); planifierRetour(); }
     envoiEnCours = false;
   }
+  function noterErreur(ou, e) {
+    derniereErreur = ou + ' : ' + ((e && (e.message || e.code)) || String(e));
+    try { console.error('Salle de jeux, enregistrement impossible (' + derniereErreur + ')', e); } catch (x) { /* ignoré */ }
+  }
   function planifierRetour() {
-    afficherEtat('Hors connexion : sera enregistré dès que possible', true);
+    var hors = typeof navigator !== 'undefined' && navigator.onLine === false;
+    afficherEtat(hors ? 'Hors connexion : sera enregistré dès que possible' : 'Enregistrement impossible pour le moment (' + (derniereErreur || 'erreur inconnue') + '). Nouvel essai bientôt.', true);
     if (retour) return;
     retour = setTimeout(function () { retour = null; viderProgression(); viderParties(); }, 15000);
   }
