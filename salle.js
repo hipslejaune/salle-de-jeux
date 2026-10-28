@@ -5,7 +5,7 @@
   var URL_SUPABASE = 'https://gjqufcsznhfimnnprion.supabase.co';
   var CLE_PUBLIQUE = 'sb_publishable_q5JqM7-S4GLs9rmH-_DDLA_1Y6RrozB';
   // Clé publique Cloudflare Turnstile (anti-robot). Vide = anti-robot désactivé.
-  var CLE_TURNSTILE = '';
+  var CLE_TURNSTILE = '0x4AAAAAAFpT0ixmlHTUwNip';
   // Date de la version de la page de confidentialité acceptée à l'inscription
   var VERSION_CONFIDENTIALITE = '2026-10-28';
   var CLE_ENFANT = 'salle-enfant';
