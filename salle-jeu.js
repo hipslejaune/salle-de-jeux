@@ -135,8 +135,10 @@
   async function demarrer(nomJeu, quandPret) {
     jeu = nomJeu;
     try {
-      await charger(BASE + 'vendor/supabase.js');
-      await charger(BASE + 'salle.js');
+      if (!(window.Salle && window.Salle.client)) {   // déjà présent quand le jeu est livré par jeu.html
+        await charger(BASE + 'vendor/supabase.js');
+        await charger(BASE + 'salle.js');
+      }
     } catch (e) {
       return ecranMessage('Impossible de joindre la salle de jeux. Vérifie ta connexion internet.', 'Réessayer', function () { location.reload(); }, 'Retour à la salle de jeux');
     }

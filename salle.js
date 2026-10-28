@@ -10,6 +10,8 @@
   var VERSION_CONFIDENTIALITE = '2026-10-28';
   var CLE_ENFANT = 'salle-enfant';
 
+  if (window.Salle && window.Salle.client) return;   // déjà initialisé (page remplacée par jeu.html)
+
   var client = window.supabase.createClient(URL_SUPABASE, CLE_PUBLIQUE, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });

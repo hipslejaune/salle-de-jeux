@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0D2E">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<title>Salle de jeux</title>
+<style>
+@font-face{font-family:'DM Sans';font-weight:500;font-display:swap;src:url(fonts/dm-sans-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'DM Sans';font-weight:700;font-display:swap;src:url(fonts/dm-sans-latin-700-normal.woff2) format('woff2')}
+html{background:#0A0D2E}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;color:#F2F4FF;font:500 16px/1.4 'DM Sans',system-ui,sans-serif;
+  background:radial-gradient(circle at 100% 0%,rgba(255,94,138,.25),transparent 42%),linear-gradient(180deg,#0E1240,#0A0D2E) fixed}
+.c{max-width:420px;text-align:center;padding:22px;border-radius:20px;background:#141A4A;border:1px solid rgba(255,255,255,.12)}
+.c a,.c button{display:inline-block;margin-top:14px;height:42px;line-height:42px;padding:0 20px;border:0;border-radius:999px;cursor:pointer;color:#fff;text-decoration:none;font:700 15px/42px 'DM Sans',system-ui,sans-serif;background:linear-gradient(135deg,#FF8A4C,#FF3D8B)}
+</style>
+</head>
+<body>
+<div class="c" id="c" role="status">Chargement du jeu…</div>
+<script src="vendor/supabase.js"></script>
+<script src="salle.js"></script>
+<script>
+(function () {
+  /* Livraison protégée : le jeu n'est téléchargé que par un parent connecté, depuis un espace privé de la base. */
+  var JEUX = ['additions-soustractions', 'tables-multiplication', 'jeu-lecture-ninjago', 'horloge-mario', 'dizaines-et-unites'];
+  var c = document.getElementById('c');
+  function erreur(texte, rejouer) {
+    c.textContent = texte;
+    if (rejouer) { var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Réessayer'; b.onclick = function () { location.reload(); }; c.appendChild(document.createElement('br')); c.appendChild(b); }
+    var a = document.createElement('a'); a.href = './'; a.textContent = 'Retour à la salle de jeux';
+    c.appendChild(document.createElement('br')); c.appendChild(a);
+  }
+  (async function () {
+    var nom = new URLSearchParams(location.search).get('g');
+    if (JEUX.indexOf(nom) < 0) return location.replace('./');
+    var client = window.Salle.client, s;
+    try { s = (await client.auth.getSession()).data.session; } catch (e) { s = null; }
+    if (!s || !window.Salle.enfantCourant()) return location.replace('./');
+    var r;
+    try { r = await client.storage.from('jeux').download(nom + '.html'); } catch (e) { return erreur('La salle de jeux ne répond pas pour le moment.', true); }
+    if (r.error || !r.data) return erreur('Ce jeu n\'est pas disponible pour le moment.', true);
+    var html; try { html = await r.data.text(); } catch (e) { return erreur('Le jeu n\'a pas pu être chargé.', true); }
+    document.open(); document.write(html); document.close();
+  })();
+})();
+</script>
+</body>
+</html>
