@@ -801,7 +801,13 @@ addEventListener('resize', redim); redim();
 const v3 = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
 let tPrec = performance.now(), nImg = 0, tFps = performance.now(), premier = false;
 let enPause = false;                                  // la salle de jeux met la scène en pause quand son panneau la recouvre
-addEventListener('message', e => { if (e.data === 'riviere:pause') enPause = true; else if (e.data === 'riviere:reprise') enPause = false; });
+addEventListener('message', e => {
+  if (e.origin !== location.origin) return;
+  if (e.data === 'riviere:pause') enPause = true; else if (e.data === 'riviere:reprise') enPause = false;
+  else if (e.data && e.data.type === 'riviere:marge') aide.style.bottom = (Math.round(e.data.px) + 12) + "px";   // l'indication passe au-dessus du formulaire de la page qui nous intègre
+});
+// intégrée dans la salle de jeux : un clic dans la scène prévient la page (elle referme alors son formulaire de connexion)
+if (window.self !== window.top) addEventListener('pointerdown', () => { try { parent.postMessage('riviere:clic', location.origin); } catch (e) {} }, true);
 function boucle(now) {
   if (enPause && !TEST) { tPrec = now; requestAnimationFrame(boucle); return; }
   const dt = Math.min(0.05, (now - tPrec) / 1000); tPrec = now; tempsEcoule += dt; U.uT.value = tempsEcoule;

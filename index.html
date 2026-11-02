@@ -217,8 +217,9 @@ body.avec-scene #ecran-auth.ouvert .seg{margin-top:16px}
 body.avec-scene #ecran-auth:not(.ouvert) .seg{background:none;padding:0;gap:8px}
 body.avec-scene #ecran-auth:not(.ouvert) .seg button{height:46px;font-size:16px;font-weight:700;color:#fff;background:var(--grad);box-shadow:0 4px 14px var(--glow)}
 body.avec-scene #ecran-auth:not(.ouvert) .seg button+button{background:rgba(255,255,255,.12);box-shadow:none;border:1.5px solid rgba(255,255,255,.3)}
-html.repliable body.avec-scene .baisser{display:flex;align-items:center;justify-content:center;position:absolute;left:50%;top:0;transform:translate(-50%,-100%);
-  width:4.2rem;height:1.9rem;border:0;border-radius:1rem 1rem 0 0;padding:0;cursor:pointer;background:var(--grad);color:#fff;font-size:.95rem;line-height:1;box-shadow:0 -4px 12px rgba(0,0,0,.3)}
+body.avec-scene .baisser{display:flex;align-items:center;justify-content:center;position:absolute;left:50%;top:0;transform:translate(-50%,-100%);
+  width:4.2rem;height:1.9rem;border:0;border-radius:1rem 1rem 0 0;padding:0;cursor:pointer;background:linear-gradient(180deg,#ffa08a,#fa7f6a);color:#fff;font-size:.95rem;line-height:1;box-shadow:0 -4px 12px rgba(0,0,0,.3);text-shadow:0 1px 2px rgba(120,30,20,.45)}
+body.avec-scene .baisser:hover{filter:brightness(1.06)}
 body.avec-scene #ecran-auth.baisse{transform:translate(-50%,calc(100% + 16px + env(safe-area-inset-bottom,0px)));pointer-events:none}
 body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
 </style>
@@ -912,34 +913,61 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
 })();
 </script>
 <script>
-/* Connexion repliable (même mécanique que l'accueil du calendrier de l'Avent) */
+/* Connexion repliable (même mécanique que l'accueil du calendrier de l'Avent) :
+   deux onglets en bas ; un clic ouvre le formulaire au-dessus, un second clic sur l'onglet actif, la languette ou un clic à côté le referme.
+   Téléphone et tablette : à l'arrivée et à la fermeture, le bloc est rabaissé ; la languette le remonte. */
 (function () {
-  var sec = document.getElementById('ecran-auth'), seg = sec && sec.querySelector('.seg'), fl = document.getElementById('baisser');
+  var sec = document.getElementById('ecran-auth'), seg = sec && sec.querySelector('.seg'), fl = document.getElementById('baisser'), fond = document.getElementById('fond-riviere');
   if (!sec || !seg || !document.body.classList.contains('avec-scene')) return;
   var a = document.getElementById('onglet-connexion'), b = document.getElementById('onglet-inscription');
-  function ouvrir(o) { sec.classList.toggle('ouvert', o); document.body.classList.toggle('form-ouvert', o); if (!o) sec.removeAttribute('data-dernier'); }
-  // capture sur la barre d'onglets : on ouvre AVANT que l'onglet n'affiche son formulaire (le CAPTCHA se dessine ainsi dans un bloc visible)
-  seg.addEventListener('click', function (e) {
-    var t = e.target.closest('[role=tab]'); if (!t) return;
-    var dejaOuvert = sec.classList.contains('ouvert') && sec.getAttribute('data-dernier') === t.id && !document.getElementById('f-' + (t === a ? 'connexion' : 'inscription')).hidden;
-    if (dejaOuvert) { e.stopPropagation(); e.preventDefault(); ouvrir(false); return; }
-    ouvrir(true); sec.setAttribute('data-dernier', t.id); window.scrollTo(0, 0);
-    setTimeout(function () { var champ = document.getElementById(t === a ? 'c-mail' : 'i-mail'); if (champ && matchMedia('(hover:hover)').matches) champ.focus(); }, 0);
-  }, true);
-  // un message à lire (lien envoyé, erreur, compte confirmé…) : le formulaire s'ouvre pour qu'on le voie
-  var msg = document.getElementById('msg-auth');
-  new MutationObserver(function () { if (!msg.hidden && msg.textContent) { etat(false); ouvrir(true); } }).observe(msg, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
-  // téléphone ou tablette : à l'arrivée le bloc est rabaissé, la languette le remonte
   var mob = matchMedia('(max-width:760px), (pointer:coarse) and (max-width:1400px)');
   if (/[?&]tablette=1/.test(location.search)) mob = { matches: true };
   document.documentElement.classList.toggle('repliable', mob.matches);
-  function etat(bas) {
-    sec.classList.toggle('baisse', bas); fl.setAttribute('aria-expanded', String(!bas)); fl.firstChild.textContent = bas ? '▲' : '▼';
-    if (bas) ouvrir(false);
+  function estOuvert() { return sec.classList.contains('ouvert'); }
+  function fleche() { var o = estOuvert(); fl.firstChild.textContent = o ? '▼' : '▲'; fl.setAttribute('aria-expanded', String(o)); fl.title = o ? 'Fermer la connexion' : 'Ouvrir la connexion'; }
+  function ouvrir(o) { sec.classList.toggle('ouvert', o); document.body.classList.toggle('form-ouvert', o); if (!o) sec.removeAttribute('data-dernier'); fleche(); marge(); }
+  function baisser(bas) { sec.classList.toggle('baisse', bas); marge(); }
+  function fermer() { if (!estOuvert() && !(mob.matches && !sec.classList.contains('baisse'))) return; ouvrir(false); if (mob.matches) baisser(true); }
+  // capture sur la barre d'onglets : on ouvre AVANT que l'onglet n'affiche son formulaire (le CAPTCHA se dessine ainsi dans un bloc visible)
+  seg.addEventListener('click', function (e) {
+    var t = e.target.closest('[role=tab]'); if (!t) return;
+    var dejaOuvert = estOuvert() && sec.getAttribute('data-dernier') === t.id && !document.getElementById('f-' + (t === a ? 'connexion' : 'inscription')).hidden;
+    if (dejaOuvert) { e.stopPropagation(); e.preventDefault(); fermer(); return; }
+    baisser(false); ouvrir(true); sec.setAttribute('data-dernier', t.id); window.scrollTo(0, 0);
+    setTimeout(function () { var champ = document.getElementById(t === a ? 'c-mail' : 'i-mail'); if (champ && matchMedia('(hover:hover)').matches) champ.focus(); }, 0);
+  }, true);
+  // la languette orangée : ouvre (sur « Connexion », ou le dernier onglet utilisé) ou referme
+  var dernier = a;
+  seg.addEventListener('click', function (e) { var t = e.target.closest('[role=tab]'); if (t) dernier = t; });
+  fl.addEventListener('click', function () { if (estOuvert()) fermer(); else dernier.click(); });
+  // un clic à côté de la fenêtre (sur la page ou dans la scène 3D) la referme
+  document.addEventListener('pointerdown', function (e) {
+    if (sec.hidden || sec.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.sheet')) return;
+    fermer();
+  });
+  addEventListener('message', function (e) { if (e.origin === location.origin && e.data === 'riviere:clic' && !sec.hidden) fermer(); });
+  // un message à lire (lien envoyé, erreur, compte confirmé…) : le formulaire s'ouvre pour qu'on le voie
+  var msg = document.getElementById('msg-auth');
+  new MutationObserver(function () { if (!msg.hidden && msg.textContent) { baisser(false); ouvrir(true); } }).observe(msg, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
+  // l'indication « Fais défiler pour avancer… » de la scène se place juste au-dessus du formulaire (ou du bouton « Les jeux »)
+  var tMarge = 0;
+  function marge() {
+    clearTimeout(tMarge);
+    tMarge = setTimeout(function () {
+      var px = 22, h = window.innerHeight, bj = document.getElementById('btn-jeux');
+      if (!sec.hidden) { var r = sec.getBoundingClientRect(); px = Math.max(0, h - r.top) + fl.offsetHeight; }
+      else if (bj && bj.offsetParent) px = h - bj.getBoundingClientRect().top;
+      try { fond.contentWindow.postMessage({ type: 'riviere:marge', px: px }, location.origin); } catch (e) {}
+    }, 420);                                                       // après la petite animation du bloc
   }
-  fl.addEventListener('click', function () { etat(!sec.classList.contains('baisse')); });
+  if (window.ResizeObserver) new ResizeObserver(marge).observe(sec);
+  new MutationObserver(marge).observe(sec, { attributes: true, attributeFilter: ['hidden'] });
+  new MutationObserver(marge).observe(document.getElementById('ecran-salle'), { attributes: true, attributeFilter: ['hidden'] });
+  addEventListener('resize', marge); fond.addEventListener('load', marge);
   if (location.hash === '#inscription') setTimeout(function () { b.click(); }, 0);
-  else if (mob.matches) etat(true);
+  else if (mob.matches) baisser(true);
+  fleche(); marge();
 })();
 </script>
 </body>
