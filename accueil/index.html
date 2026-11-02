@@ -788,6 +788,21 @@ const radeau = (() => {
 
 // ───────────── Plume, assis sur le radeau, qui nous regarde (chatouilles au clic) ─────────────
 const plumeBus = {};                                  // plumeBus.parler(audio) : Plume dit une phrase en bougeant la bouche
+const tamponsVoix = new Map(); let voixWA = null;
+function jouerVoix(a) {
+  // renvoie une promesse : durée en secondes si le son part, null s'il est bloqué
+  if (voixWA) { try { voixWA.stop(); } catch (e) {} voixWA = null; }
+  const ctx = window.__ctxSon && window.__ctxSon();
+  if (ctx) {
+    if (ctx.state === 'suspended') ctx.resume();
+    const url = a.src;
+    const tampon = tamponsVoix.get(url) || fetch(url).then(r => r.arrayBuffer()).then(ab => new Promise((ok, ko) => ctx.decodeAudioData(ab, ok, ko)));
+    tamponsVoix.set(url, tampon);
+    return tampon.then(buf => { const src = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 1; src.buffer = buf; src.connect(g); g.connect(ctx.destination); src.start(); voixWA = src; return ctx.state === 'running' ? buf.duration : null; })
+      .catch(() => a.play().then(() => a.duration || 2.5).catch(() => null));
+  }
+  a.currentTime = 0; return a.play().then(() => (isFinite(a.duration) && a.duration > 0) ? a.duration : 2.5).catch(() => null);
+}
 {
   const H = .66, W = H * 348 / 467, chg = new THREE.TextureLoader();
   const T = {}; for (const [k, f] of [['repos', 'plume.webp'], ['clin', 'plume-clin.webp'], ['rire1', 'plume-rire1.webp'], ['rire2', 'plume-rire2.webp'], ['parle1', 'plume-parle1.webp'], ['parle2', 'plume-parle2.webp']]) { const t = chg.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS; T[k] = t; }
@@ -802,14 +817,14 @@ const plumeBus = {};                                  // plumeBus.parler(audio) 
   let rire = 0, rireFin = 0, tortille = 0, saut = 0, nClic = 0, enCours = null, parle = 0, bouchePar = 0, imgPar = null;
   plumeBus.parler = a => {
     if (enCours) { enCours.pause(); enCours.currentTime = 0; }
-    enCours = a; a.currentTime = 0; rire = 0; tortille = 0;
-    const d = (isFinite(a.duration) && a.duration > 0) ? a.duration : 2.6;
-    return a.play().then(() => { parle = d; return true; }).catch(() => { parle = d; return false; });   // son bloqué : la bouche bouge quand même
+    enCours = a; rire = 0; tortille = 0; parle = 2.6;
+    return jouerVoix(a).then(d => { parle = d || 2.6; return !!d; });   // son bloqué : la bouche bouge quand même
   };
   const chatouiller = queue => {
     if (enCours) { enCours.pause(); enCours.currentTime = 0; }
-    const a = queue ? voixQueue : voix[nClic++ % voix.length]; enCours = a; a.currentTime = 0; a.play().catch(() => {});
-    const d = (isFinite(a.duration) && a.duration > 0) ? a.duration : 1.9; rire = d; rireFin = d; tortille = 1; saut = 1;
+    const a = queue ? voixQueue : voix[nClic++ % voix.length]; enCours = a; parle = 0;
+    rire = 1.9; rireFin = 1.9; tortille = 1; saut = 1;
+    jouerVoix(a).then(d => { if (d) { rire = d; rireFin = d; } });
   };
   // un clic (ou une tape) sans glisser sur Plume déclenche les chatouilles
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(); let appui = null;
@@ -948,7 +963,7 @@ const TEXTE_MAISON = 'Tu veux retourner au départ\u00a0? Clique sur la maison\u
 let derniereProposition = -99, maisonArmee = 0;
 function proposerDepart() {                                  // Plume le dit (au plus une fois toutes les 6 s), la bulle l'écrit
   const t = performance.now() / 1000; maisonHUD.dire(TEXTE_MAISON, 3.6);
-  if (t - derniereProposition > 6) { derniereProposition = t; plumeBus.parler(voixMaison); }
+  if (t - derniereProposition > 6) { derniereProposition = t; plumeBus.parler(voixMaison).then(ok => { if (!ok) derniereProposition = -99; }); }
 }
 cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const dessus = maisonHUD.touche(e); if (dessus && !maisonHUD.survol) proposerDepart(); maisonHUD.survoler(dessus); });
 cv.addEventListener('pointerleave', () => maisonHUD.survoler(false));
@@ -1009,6 +1024,7 @@ window.Riviere = { epingler(el, x, y, z) { document.getElementById('couche').app
 // ───────────── chants d'oiseaux ─────────────
 {
   let ctxA = null, gainA = null, bufA = null, sonOn = false; const bt = document.getElementById('son');
+  window.__ctxSon = () => ctxA;                       // Plume parle par le même canal que les oiseaux (s'ils chantent, sa voix passe aussi)
   function charger() {
     if (bufA || !(window.AudioContext || window.webkitAudioContext)) return Promise.resolve();
     ctxA = new (window.AudioContext || window.webkitAudioContext)(); gainA = ctxA.createGain(); gainA.gain.value = 0; gainA.connect(ctxA.destination);
