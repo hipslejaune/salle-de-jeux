@@ -1086,9 +1086,9 @@ let sceneConnectee = false;
     void main(){
       vec2 p = (vUv - .5) * 2.; float r = length(p), a = atan(p.y, p.x);
       // l'affiche occupe tout le cercle et subit le tourbillon : vrille de plus en plus forte vers le centre, vagues qui glissent vers l'intérieur
-      float tw = (1.0 + .35 * sin(uT * .7)) * pow(1. - min(r, 1.), 2.2) * 1.3;
-      float vague = sin(r * 16. + uT * 3.) * .03 * (.4 + r);
-      float rs = clamp(r * (1. - .1 * (1. - r)) + vague, 0., 1.);               // le rayon échantillonné oscille : l'image est aspirée
+      float tw = (1.0 + .35 * sin(uT * .7)) * pow(1. - min(r, 1.), 2.2) * .8;
+      float vague = sin(r * 16. + uT * 3.) * .016 * (.4 + r);
+      float rs = clamp(r * (1. - .05 * (1. - r)) + vague, 0., 1.);               // le rayon échantillonné oscille : l'image est aspirée
       float as = a + tw;
       vec2 ps = vec2(cos(as), sin(as)) * rs;
       vec3 c = texture2D(uTex, ps * .5 + .5).rgb;
