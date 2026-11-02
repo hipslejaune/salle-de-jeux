@@ -199,6 +199,28 @@ body.avec-scene .retour-riviere{display:inline-flex;margin:0 0 10px}
 #btn-jeux{display:none}
 body.avec-scene:not(.salle-ouverte) #ecran-salle:not([hidden]) ~ #btn-jeux{display:inline-flex;position:fixed;z-index:5;left:50%;transform:translateX(-50%);
   bottom:calc(62px + env(safe-area-inset-bottom,0px));min-height:56px;padding:0 30px;font-size:18px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.35),0 4px 14px var(--glow)}
+
+/* Connexion sur la rivière, même mécanique que l'accueil du calendrier de l'Avent :
+   seuls les deux onglets restent en bas de l'écran ; un clic ouvre le formulaire au-dessus, un second clic sur l'onglet actif le referme.
+   Téléphone et tablette : à l'arrivée le bloc est rabaissé, la petite languette le remonte. */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.baisser{display:none}
+body.avec-scene #ecran-auth{position:fixed;z-index:2;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(440px,calc(100% - 24px));margin:0;
+  transform:translateX(-50%);transition:transform .35s ease}
+body.avec-scene #ecran-auth .bandeau{display:none}
+body.avec-scene #ecran-auth .carte{border-radius:22px;border:1px solid rgba(255,255,255,.16);padding:8px;background:rgba(14,18,64,.5);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.3);max-height:calc(100svh - 40px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto}
+body.avec-scene #ecran-auth.ouvert .carte{background:rgba(14,18,64,.9);padding:18px 16px 10px}
+body.avec-scene #ecran-auth:not(.ouvert) .zone-form{max-height:0;overflow:hidden;visibility:hidden}
+body.avec-scene #ecran-auth .seg{margin:0}
+body.avec-scene #ecran-auth.ouvert .seg{margin-top:16px}
+body.avec-scene #ecran-auth:not(.ouvert) .seg{background:none;padding:0;gap:8px}
+body.avec-scene #ecran-auth:not(.ouvert) .seg button{height:46px;font-size:16px;font-weight:700;color:#fff;background:var(--grad);box-shadow:0 4px 14px var(--glow)}
+body.avec-scene #ecran-auth:not(.ouvert) .seg button+button{background:rgba(255,255,255,.12);box-shadow:none;border:1.5px solid rgba(255,255,255,.3)}
+html.repliable body.avec-scene .baisser{display:flex;align-items:center;justify-content:center;position:absolute;left:50%;top:0;transform:translate(-50%,-100%);
+  width:4.2rem;height:1.9rem;border:0;border-radius:1rem 1rem 0 0;padding:0;cursor:pointer;background:var(--grad);color:#fff;font-size:.95rem;line-height:1;box-shadow:0 -4px 12px rgba(0,0,0,.3)}
+body.avec-scene #ecran-auth.baisse{transform:translate(-50%,calc(100% + 16px + env(safe-area-inset-bottom,0px)));pointer-events:none}
+body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
 </style>
 </head>
 <body>
@@ -209,13 +231,11 @@ body.avec-scene:not(.salle-ouverte) #ecran-salle:not([hidden]) ~ #btn-jeux{displ
 
 <!-- Écran : connexion / inscription / mot de passe oublié -->
 <section id="ecran-auth" class="auth" hidden>
+  <button type="button" class="baisser" id="baisser" aria-expanded="true" title="Cacher ou afficher la connexion"><span aria-hidden="true">▼</span><span class="sr">Cacher ou afficher la connexion</span></button>
   <img class="bandeau" src="images/bandeau-mail.jpg" alt="" width="1200" height="360">
   <div class="carte">
+   <div class="zone-form" id="zone-form">
     <h1>La salle de jeux</h1>
-    <div class="seg" role="tablist" aria-label="Accès parent">
-      <button type="button" role="tab" id="onglet-connexion" aria-selected="true" aria-controls="f-connexion">Connexion</button>
-      <button type="button" role="tab" id="onglet-inscription" aria-selected="false" aria-controls="f-inscription">Inscription</button>
-    </div>
     <p id="msg-auth" class="msg" role="status" hidden></p>
 
     <form id="f-connexion" novalidate>
@@ -252,6 +272,11 @@ body.avec-scene:not(.salle-ouverte) #ecran-salle:not([hidden]) ~ #btn-jeux{displ
       <p style="text-align:center;margin:10px 0 0"><button type="button" class="lien" id="retour-connexion">Retour à la connexion</button></p>
     </form>
     <p class="aide" style="text-align:center;margin:14px 0 0"><a href="confidentialite.html" target="_blank" rel="noopener" style="color:var(--cy-lt)">Confidentialité</a></p>
+   </div>
+    <div class="seg" role="tablist" aria-label="Accès parent">
+      <button type="button" role="tab" id="onglet-connexion" aria-selected="true" aria-controls="f-connexion">Connexion</button>
+      <button type="button" role="tab" id="onglet-inscription" aria-selected="false" aria-controls="f-inscription">Inscription</button>
+    </div>
   </div>
 </section>
 
@@ -884,6 +909,37 @@ body.avec-scene:not(.salle-ouverte) #ecran-salle:not([hidden]) ~ #btn-jeux{displ
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && b.classList.contains('salle-ouverte') && document.getElementById('gestion').hidden && document.getElementById('admin').hidden) fermer(); }, true);
   // à la déconnexion, on referme le panneau pour retrouver l'écran de connexion sur la rivière
   new MutationObserver(function () { if (document.getElementById('ecran-salle').hidden) fermer(); }).observe(document.getElementById('ecran-salle'), { attributes: true, attributeFilter: ['hidden'] });
+})();
+</script>
+<script>
+/* Connexion repliable (même mécanique que l'accueil du calendrier de l'Avent) */
+(function () {
+  var sec = document.getElementById('ecran-auth'), seg = sec && sec.querySelector('.seg'), fl = document.getElementById('baisser');
+  if (!sec || !seg || !document.body.classList.contains('avec-scene')) return;
+  var a = document.getElementById('onglet-connexion'), b = document.getElementById('onglet-inscription');
+  function ouvrir(o) { sec.classList.toggle('ouvert', o); document.body.classList.toggle('form-ouvert', o); if (!o) sec.removeAttribute('data-dernier'); }
+  // capture sur la barre d'onglets : on ouvre AVANT que l'onglet n'affiche son formulaire (le CAPTCHA se dessine ainsi dans un bloc visible)
+  seg.addEventListener('click', function (e) {
+    var t = e.target.closest('[role=tab]'); if (!t) return;
+    var dejaOuvert = sec.classList.contains('ouvert') && sec.getAttribute('data-dernier') === t.id && !document.getElementById('f-' + (t === a ? 'connexion' : 'inscription')).hidden;
+    if (dejaOuvert) { e.stopPropagation(); e.preventDefault(); ouvrir(false); return; }
+    ouvrir(true); sec.setAttribute('data-dernier', t.id); window.scrollTo(0, 0);
+    setTimeout(function () { var champ = document.getElementById(t === a ? 'c-mail' : 'i-mail'); if (champ && matchMedia('(hover:hover)').matches) champ.focus(); }, 0);
+  }, true);
+  // un message à lire (lien envoyé, erreur, compte confirmé…) : le formulaire s'ouvre pour qu'on le voie
+  var msg = document.getElementById('msg-auth');
+  new MutationObserver(function () { if (!msg.hidden && msg.textContent) { etat(false); ouvrir(true); } }).observe(msg, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
+  // téléphone ou tablette : à l'arrivée le bloc est rabaissé, la languette le remonte
+  var mob = matchMedia('(max-width:760px), (pointer:coarse) and (max-width:1400px)');
+  if (/[?&]tablette=1/.test(location.search)) mob = { matches: true };
+  document.documentElement.classList.toggle('repliable', mob.matches);
+  function etat(bas) {
+    sec.classList.toggle('baisse', bas); fl.setAttribute('aria-expanded', String(!bas)); fl.firstChild.textContent = bas ? '▲' : '▼';
+    if (bas) ouvrir(false);
+  }
+  fl.addEventListener('click', function () { etat(!sec.classList.contains('baisse')); });
+  if (location.hash === '#inscription') setTimeout(function () { b.click(); }, 0);
+  else if (mob.matches) etat(true);
 })();
 </script>
 </body>
