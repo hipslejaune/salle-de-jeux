@@ -1162,12 +1162,32 @@ function portailSous(e) {
     }
     appuiP = null; }); }
 
+// ───────────── Plume parle avec la voix 05 du studio : accueil, choix du jeu, au revoir, ennui puis réveil ─────────────
+const bibVoix = new Map();
+const voixPlume = f => { let a = bibVoix.get(f); if (!a) { a = new Audio('voix/' + f + '.mp3'); a.preload = 'auto'; bibVoix.set(f, a); } return a; };
+const suffixePrenom = p => { const n = String(p || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); return n === 'kaliana' ? 'kaliana' : n === 'kael' ? 'kael' : 'gen'; };
+const auHasard = t => t[Math.floor(Math.random() * t.length)];
+let premiereVisite = true;
+function plumeDit(quand, prenom) {
+  const s = suffixePrenom(prenom); let f = null;
+  if (quand === 'connexion') { f = premiereVisite ? 'accueil-1_' + s : auHasard(['accueil-2_', 'accueil-3_']) + s; premiereVisite = false; }   // à la connexion : bienvenue
+  else if (quand === 'enfant') { if (prenom) f = auHasard(['accueil-2_', 'accueil-3_']) + s; }                                             // un enfant est choisi : « Coucou Kaliana ! »
+  else if (quand === 'jeux') f = Math.random() < .7 ? 'choix-1_' + s : 'choix-2';                                                          // la salle des jeux s'ouvre
+  else if (quand === 'depart') f = 'aurevoir-1_' + s;                                                                                      // déconnexion
+  if (f) plumeBus.parler(voixPlume(f));
+}
+{ let derniere = performance.now(), nEnnui = 0, ennuiDit = false;
+  for (const ev of ['pointerdown', 'pointermove', 'wheel', 'keydown']) addEventListener(ev, () => { derniere = performance.now(); if (ennuiDit) { ennuiDit = false; nEnnui = 0; if (sceneConnectee) plumeBus.parler(voixPlume('reveil-1')); } }, true);
+  setInterval(() => { if (enPause || !sceneConnectee || document.hidden) return;                                                       // connecté et inactif : Plume s'ennuie
+    if (performance.now() - derniere > 45000 * (nEnnui + 1)) { plumeBus.parler(voixPlume(nEnnui % 2 ? 'ennui-2' : 'ennui-1')); nEnnui++; ennuiDit = true; } }, 2000); }
+
 if (location.hash === '#test') window.__connecte = v => { sceneConnectee = v; };
 let enPause = false;                                  // la salle de jeux met la scène en pause quand son panneau la recouvre
 addEventListener('message', e => {
   if (e.origin !== location.origin) return;
   if (e.data === 'riviere:pause') enPause = true; else if (e.data === 'riviere:reprise') enPause = false;
-  else if (e.data && e.data.type === 'riviere:marge') { aide.style.bottom = (Math.round(e.data.px) + 12) + "px"; maisonHUD.marge = e.data.px; accesHUD.marge = e.data.px; if (!TEST) accesHUD.visible = !!e.data.acces; sceneConnectee = !!e.data.connecte; }   // l'indication passe au-dessus du formulaire de la page qui nous intègre
+  else if (e.data && e.data.type === 'riviere:marge') { aide.style.bottom = (Math.round(e.data.px) + 12) + "px"; maisonHUD.marge = e.data.px; accesHUD.marge = e.data.px; if (!TEST) accesHUD.visible = !!e.data.acces; sceneConnectee = !!e.data.connecte; }
+  else if (e.data && e.data.type === 'riviere:plume') plumeDit(e.data.quand, e.data.prenom);   // l'indication passe au-dessus du formulaire de la page qui nous intègre
 });
 // intégrée dans la salle de jeux : un clic dans la scène prévient la page (elle referme alors son formulaire de connexion)
 if (window.self !== window.top) addEventListener('pointerdown', () => { try { parent.postMessage('riviere:clic', location.origin); } catch (e) {} }, true);

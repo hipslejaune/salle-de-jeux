@@ -226,7 +226,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
 </head>
 <body>
 <div class="halos" aria-hidden="true"></div>
-<iframe id="fond-riviere" src="accueil/index.html?v=16" title="Descente du ruisseau en radeau avec Plume" allow="autoplay" tabindex="-1"></iframe>
+<iframe id="fond-riviere" src="accueil/index.html?v=17" title="Descente du ruisseau en radeau avec Plume" allow="autoplay" tabindex="-1"></iframe>
 
 <div id="chargement" role="status">Chargement…</div>
 
@@ -674,6 +674,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
       b.onclick = function () {
         courant = (courant && courant.id === en.id) ? null : en;
         Salle.choisirEnfant(courant);
+        if (window.signalPlume) window.signalPlume('enfant', courant ? courant.prenom : '');   // Plume dit « Coucou <prénom> ! »
         message('#msg-salle', '');
         dessiner();
       };
@@ -906,6 +907,14 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
   function ouvrir() { b.classList.add('salle-ouverte'); document.documentElement.style.overflow = 'hidden'; signal('riviere:pause'); }
   function fermer() { if (!b.classList.contains('salle-ouverte')) return; b.classList.remove('salle-ouverte'); document.documentElement.style.overflow = ''; signal('riviere:reprise'); }
   document.getElementById('btn-jeux').addEventListener('click', ouvrir);
+  // Plume parle (voix 05) : bienvenue à la connexion, « Coucou <prénom> » au choix de l'enfant, choix du jeu à l'ouverture de la salle, au revoir à la déconnexion
+  function prenomCourant() { try { var c = window.Salle && Salle.enfantCourant && Salle.enfantCourant(); return c ? c.prenom : ''; } catch (e) { return ''; } }
+  window.signalPlume = function (quand, prenom) { signal({ type: 'riviere:plume', quand: quand, prenom: prenom === undefined ? prenomCourant() : prenom }); };
+  document.getElementById('btn-jeux').addEventListener('click', function () { window.signalPlume('jeux'); });
+  (function () { var salle = document.getElementById('ecran-salle'), etait = !salle.hidden, dernier = '';
+    new MutationObserver(function () { var est = !salle.hidden; if (est === etait) return; etait = est;
+      if (est) { dernier = prenomCourant(); window.signalPlume('connexion', dernier); } else window.signalPlume('depart', dernier); })
+      .observe(salle, { attributes: true, attributeFilter: ['hidden'] }); })();
   document.getElementById('retour-riviere').addEventListener('click', fermer);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && b.classList.contains('salle-ouverte') && document.getElementById('gestion').hidden && document.getElementById('admin').hidden) fermer(); }, true);
   // à la déconnexion, on referme le panneau pour retrouver l'écran de connexion sur la rivière
