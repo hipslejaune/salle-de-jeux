@@ -179,10 +179,31 @@ select option{background:var(--sheet);color:var(--tx)}
   .tile .hint{display:none}
   .badge{font-size:9.5px;padding:2px 7px}
 }
+
+/* Accueil : la descente du ruisseau en radeau (scène 3D) occupe tout l'écran derrière la page.
+   Avant connexion, l'écran de connexion est posé par-dessus ; une fois connecté, le bouton « Les jeux » ouvre la salle en panneau. */
+#fond-riviere{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:0;display:block;background:#4a90e8}
+body.avec-scene{background:transparent}
+body.avec-scene .halos{display:none}
+body.avec-scene #chargement{text-shadow:0 2px 8px rgba(0,0,0,.6);color:#fff}
+body.avec-scene .auth .carte{background:rgba(14,18,64,.88);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+body.avec-scene .auth .bandeau{box-shadow:0 10px 40px rgba(0,0,0,.35)}
+body.avec-scene .auth{position:relative;z-index:2}
+body.avec-scene:not(.salle-ouverte) #ecran-salle{display:none!important}
+body.avec-scene.salle-ouverte #ecran-salle{position:fixed;inset:0;z-index:10;overflow:auto;max-width:none;margin:0;
+  background:linear-gradient(180deg,rgba(14,18,64,.94),rgba(10,13,46,.97));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  padding-block:calc(14px + env(safe-area-inset-top,0px)) calc(40px + env(safe-area-inset-bottom,0px));
+  padding-inline:max(16px,calc((100% - 1000px) / 2),env(safe-area-inset-left,0px))}
+.retour-riviere{display:none}
+body.avec-scene .retour-riviere{display:inline-flex;margin:0 0 10px}
+#btn-jeux{display:none}
+body.avec-scene:not(.salle-ouverte) #ecran-salle:not([hidden]) ~ #btn-jeux{display:inline-flex;position:fixed;z-index:5;left:50%;transform:translateX(-50%);
+  bottom:calc(62px + env(safe-area-inset-bottom,0px));min-height:56px;padding:0 30px;font-size:18px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.35),0 4px 14px var(--glow)}
 </style>
 </head>
 <body>
 <div class="halos" aria-hidden="true"></div>
+<iframe id="fond-riviere" src="accueil/index.html" title="Descente du ruisseau en radeau avec Plume" allow="autoplay" tabindex="-1"></iframe>
 
 <div id="chargement" role="status">Chargement…</div>
 
@@ -253,6 +274,7 @@ select option{background:var(--sheet);color:var(--tx)}
 
 <!-- Écran : la salle de jeux (parent connecté) -->
 <main id="ecran-salle" hidden>
+  <button type="button" class="btn ghost petit retour-riviere" id="retour-riviere">← Retour à la rivière</button>
   <div class="entete">
     <div>
       <div class="sub" id="date-jour"></div>
@@ -314,6 +336,7 @@ select option{background:var(--sheet);color:var(--tx)}
     </div>
   </div>
 </main>
+<button type="button" class="btn" id="btn-jeux">Les jeux</button>
 
 <!-- Fenêtre : gérer les enfants -->
 <div class="sheet" id="gestion" hidden>
@@ -845,6 +868,22 @@ select option{background:var(--sheet);color:var(--tx)}
       message('#msg-auth', traduire(err), 'err');
     }
   })();
+})();
+</script>
+<script>
+/* Accueil rivière : panneau de la salle ouvert par « Les jeux », refermé par « Retour à la rivière » ou Échap */
+(function () {
+  var b = document.body, f = document.getElementById('fond-riviere');
+  if (!f) return;
+  b.classList.add('avec-scene');
+  function signal(m) { try { f.contentWindow.postMessage(m, location.origin); } catch (e) {} }
+  function ouvrir() { b.classList.add('salle-ouverte'); document.documentElement.style.overflow = 'hidden'; signal('riviere:pause'); }
+  function fermer() { if (!b.classList.contains('salle-ouverte')) return; b.classList.remove('salle-ouverte'); document.documentElement.style.overflow = ''; signal('riviere:reprise'); }
+  document.getElementById('btn-jeux').addEventListener('click', ouvrir);
+  document.getElementById('retour-riviere').addEventListener('click', fermer);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && b.classList.contains('salle-ouverte') && document.getElementById('gestion').hidden && document.getElementById('admin').hidden) fermer(); }, true);
+  // à la déconnexion, on referme le panneau pour retrouver l'écran de connexion sur la rivière
+  new MutationObserver(function () { if (document.getElementById('ecran-salle').hidden) fermer(); }).observe(document.getElementById('ecran-salle'), { attributes: true, attributeFilter: ['hidden'] });
 })();
 </script>
 </body>
