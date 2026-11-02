@@ -787,9 +787,10 @@ const radeau = (() => {
 }
 
 // ───────────── Plume, assis sur le radeau, qui nous regarde (chatouilles au clic) ─────────────
+const plumeBus = {};                                  // plumeBus.parler(audio) : Plume dit une phrase en bougeant la bouche
 {
   const H = .66, W = H * 348 / 467, chg = new THREE.TextureLoader();
-  const T = {}; for (const [k, f] of [['repos', 'plume.webp'], ['clin', 'plume-clin.webp'], ['rire1', 'plume-rire1.webp'], ['rire2', 'plume-rire2.webp']]) { const t = chg.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS; T[k] = t; }
+  const T = {}; for (const [k, f] of [['repos', 'plume.webp'], ['clin', 'plume-clin.webp'], ['rire1', 'plume-rire1.webp'], ['rire2', 'plume-rire2.webp'], ['parle1', 'plume-parle1.webp'], ['parle2', 'plume-parle2.webp']]) { const t = chg.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS; T[k] = t; }
   const g = new THREE.PlaneGeometry(W, H); g.translate(0, H / 2, 0); g.rotateX(Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial({ map: T.repos, transparent: true, alphaTest: .08, color: 0xeeeeee, side: THREE.DoubleSide });
   const plume = new THREE.Mesh(g, mat); plume.renderOrder = 3; plume.rotation.order = 'ZYX'; monde.add(plume);
@@ -798,7 +799,13 @@ const radeau = (() => {
   // voix des chatouilles (les mêmes que sur la page de Plume)
   const voix = ['plume-clic-0.mp3', 'plume-clic-1.mp3', 'plume-clic-3.mp3'].map(f => new Audio(f)), voixQueue = new Audio('plume-clic-2.mp3');
   for (const a of [...voix, voixQueue]) a.preload = 'auto';
-  let rire = 0, rireFin = 0, tortille = 0, saut = 0, nClic = 0, enCours = null;
+  let rire = 0, rireFin = 0, tortille = 0, saut = 0, nClic = 0, enCours = null, parle = 0, bouchePar = 0, imgPar = null;
+  plumeBus.parler = a => {
+    if (enCours) { enCours.pause(); enCours.currentTime = 0; }
+    enCours = a; a.currentTime = 0; rire = 0; tortille = 0;
+    const d = (isFinite(a.duration) && a.duration > 0) ? a.duration : 2.6;
+    return a.play().then(() => { parle = d; return true; }).catch(() => { parle = d; return false; });   // son bloqué : la bouche bouge quand même
+  };
   const chatouiller = queue => {
     if (enCours) { enCours.pause(); enCours.currentTime = 0; }
     const a = queue ? voixQueue : voix[nClic++ % voix.length]; enCours = a; a.currentTime = 0; a.play().catch(() => {});
@@ -826,7 +833,8 @@ const radeau = (() => {
     const sq = 1 + .018 * Math.sin(t * 2.1); plume.scale.set(1 + .03 * tortille * Math.sin(t * 19), 1, sq - .03 * tortille * Math.sin(t * 19));
     // visage : rire (bouche qui bouge) ou clignements
     let m = T.repos;
-    if (rire > 0) { bouche -= dt; if (bouche < 0) bouche = .08 + Math.random() * .1; m = Math.sin(t * 40) > -.2 ? T.rire2 : T.rire1; if (rire < .25) m = T.rire1; }
+    if (parle > 0) { parle -= dt; bouchePar -= dt; if (bouchePar < 0 || !imgPar) { bouchePar = .07 + Math.random() * .08; const r = Math.random(); imgPar = r < .45 ? T.parle2 : r < .85 ? T.parle1 : T.repos; } m = parle < .12 ? T.repos : imgPar; }
+    else if (rire > 0) { bouche -= dt; if (bouche < 0) bouche = .08 + Math.random() * .1; m = Math.sin(t * 40) > -.2 ? T.rire2 : T.rire1; if (rire < .25) m = T.rire1; }
     else { prochain -= dt; if (prochain < 0) { clin = .14; prochain = 2.5 + Math.random() * 3.5; if (Math.random() < .2) prochain = .3; } clin -= dt; if (clin > 0) m = T.clin; }
     if (mat.map !== m) mat.map = m;
   });
@@ -899,37 +907,60 @@ const maisonHUD = (() => {
   m.position.y = -.12; m.rotation.set(.32, -.55, 0);
   const zone = new THREE.Mesh(new THREE.PlaneGeometry(.66, .78), new THREE.MeshBasicMaterial({ visible: false })); zone.position.set(0, .06, .2); saut.add(zone);   // zone de clic fixe (la maison bouge quand elle saute)
   const cible = [zone];
-  let survol = false, tSaut = 0, marge = 22;
+  let survol = false, tSaut = 0, marge = 22, tailleP = 90, bulleT = 0;
+  const bulle = document.createElement('div'); bulle.id = 'bulle-maison';
+  bulle.style.cssText = 'position:fixed;left:14px;max-width:min(260px,70vw);padding:10px 14px;border-radius:16px;background:#fffdf6;color:#3b2516;font:600 15px/1.3 system-ui,-apple-system,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.3);opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;pointer-events:none;z-index:5';
+  bulle.innerHTML = '<span style="color:#d9581f">Plume</span> : <span class="t"></span><i style="position:absolute;left:40px;bottom:-9px;border:9px solid transparent;border-top-color:#fffdf6;border-bottom:0"></i>';
+  document.body.appendChild(bulle);
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   function placer() {
     cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
     const d = 3, hh = d * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), hw = hh * cam.aspect, px = 2 * hh / innerHeight;
-    const taille = Math.min(118, Math.max(84, innerHeight * .13)) * px;                     // ≈ 64 à 92 pixels de large
+    tailleP = Math.min(118, Math.max(84, innerHeight * .13)); const taille = tailleP * px;                     // ≈ 64 à 92 pixels de large
     saut.scale.setScalar(taille / .5);
     saut.position.set(-hw + 34 * px + taille * .62, -hh + (Math.max(10, marge) + 40) * px, -d);
   }
   function touche(e) { const r = cv.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, cam); return ray.intersectObjects(cible, false).length > 0; }
-  addEventListener('resize', placer); placer();
+  function posBulle() { bulle.style.bottom = (Math.max(10, marge) + 40 + tailleP * .62 + 14) + 'px'; }
+  addEventListener('resize', () => { placer(); posBulle(); }); placer(); posBulle();
   return {
     touche, placer,
-    set marge(v) { marge = v; placer(); },
+    set marge(v) { marge = v; placer(); posBulle(); },
+    get survol() { return survol; },
+    dire(texte, duree) { bulle.querySelector('.t').textContent = texte; posBulle(); bulle.style.opacity = '1'; bulle.style.transform = 'none'; bulleT = duree; },
+    sauter(duree) { if (!survol) { tSaut = Math.max(tSaut, .001); } this._sautAuto = duree; },
     survoler(v) { if (v !== survol) { survol = v; cv.style.cursor = v ? 'pointer' : ''; } },
     rendre(dt, t) {
+      if (bulleT > 0) { bulleT -= dt; if (bulleT <= 0) { bulle.style.opacity = '0'; bulle.style.transform = 'translateY(8px)'; } }
+      if (this._sautAuto > 0) { this._sautAuto -= dt; if (!survol) tSaut = Math.max(tSaut, .001); }
       // au survol : petits sauts en boucle (écrasement à l'atterrissage) ; sinon elle se repose doucement
       if (survol || tSaut > 0) { tSaut += dt; const k = (tSaut % .62) / .62, hautSaut = Math.sin(k * Math.PI);
         saut.children[0].position.y = -.12 + hautSaut * .16; const ec = k < .12 || k > .9 ? .86 : 1;
         saut.children[0].scale.set(1 + (1 - ec) * .6, ec + hautSaut * .08, 1 + (1 - ec) * .6); saut.children[0].rotation.y = -.55 + Math.sin(tSaut * 3) * .12;
-        if (!survol && k > .97) { tSaut = 0; saut.children[0].position.y = -.12; saut.children[0].scale.set(1, 1, 1); saut.children[0].rotation.y = -.55; } }
+        if (!survol && !(this._sautAuto > 0) && k > .97) { tSaut = 0; saut.children[0].position.y = -.12; saut.children[0].scale.set(1, 1, 1); saut.children[0].rotation.y = -.55; } }
       renderer.autoClear = false; renderer.clearDepth(); renderer.render(hud, cam); renderer.autoClear = true;
     }
   };
 })();
 function retourDepart() { cible = pos = 0; elan = 0; orbite = 0; camInit = false; capLisse = null; dernierScroll = 0; }
-cv.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') maisonHUD.survoler(maisonHUD.touche(e)); });
+const voixMaison = new Audio('plume-maison.mp3'); voixMaison.preload = 'auto';
+const TEXTE_MAISON = 'Tu veux retourner au départ\u00a0? Clique sur la maison\u00a0!';
+let derniereProposition = -99, maisonArmee = 0;
+function proposerDepart() {                                  // Plume le dit (au plus une fois toutes les 6 s), la bulle l'écrit
+  const t = performance.now() / 1000; maisonHUD.dire(TEXTE_MAISON, 3.6);
+  if (t - derniereProposition > 6) { derniereProposition = t; plumeBus.parler(voixMaison); }
+}
+cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const dessus = maisonHUD.touche(e); if (dessus && !maisonHUD.survol) proposerDepart(); maisonHUD.survoler(dessus); });
 cv.addEventListener('pointerleave', () => maisonHUD.survoler(false));
 { let appuiM = null;
-  cv.addEventListener('pointerdown', e => { appuiM = maisonHUD.touche(e) ? { x: e.clientX, y: e.clientY } : null; }, true);
-  cv.addEventListener('pointerup', e => { if (appuiM && Math.hypot(e.clientX - appuiM.x, e.clientY - appuiM.y) < 12 && maisonHUD.touche(e)) retourDepart(); appuiM = null; }); }
+  cv.addEventListener('pointerdown', e => { appuiM = maisonHUD.touche(e) ? { x: e.clientX, y: e.clientY, type: e.pointerType } : null; }, true);
+  cv.addEventListener('pointerup', e => {
+    if (appuiM && Math.hypot(e.clientX - appuiM.x, e.clientY - appuiM.y) < 12 && maisonHUD.touche(e)) {
+      // au doigt : la 1re tape fait parler Plume (et sauter la maison), la 2e (dans les 6 s) ramène au départ
+      if (appuiM.type !== 'mouse' && performance.now() - maisonArmee > 6000) { maisonArmee = performance.now(); proposerDepart(); maisonHUD.sauter(3); }
+      else { maisonArmee = 0; retourDepart(); }
+    }
+    appuiM = null; }); }
 
 let enPause = false;                                  // la salle de jeux met la scène en pause quand son panneau la recouvre
 addEventListener('message', e => {
