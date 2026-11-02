@@ -197,6 +197,14 @@ body.avec-scene.salle-ouverte #ecran-salle{position:fixed;inset:0;z-index:10;ove
 .retour-riviere{display:none}
 body.avec-scene .retour-riviere{display:inline-flex;margin:0 0 10px}
 #btn-jeux{display:none}
+#qui-riviere{display:none}
+body.avec-scene:not(.salle-ouverte) #ecran-salle:not([hidden]) ~ #qui-riviere{display:flex;position:fixed;z-index:4;left:0;right:0;top:calc(56px + env(safe-area-inset-top,0px));justify-content:center;align-items:center;flex-wrap:wrap;gap:8px;padding:0 14px;pointer-events:none}
+#qui-riviere>*{pointer-events:auto}
+#qui-riviere .qr-lab{color:#fff;font-weight:700;font-size:14px;text-shadow:0 1px 6px rgba(0,0,0,.6);margin-right:2px}
+#qui-riviere button{min-height:40px;padding:0 18px;border-radius:999px;border:2px solid var(--acc,#4FD1FF);background:rgba(10,13,46,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font:700 16px var(--font);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+#qui-riviere button[aria-pressed="true"]{background:var(--acc,#4FD1FF);color:#0A0D2E;box-shadow:0 4px 16px var(--acc,#4FD1FF)}
+#qui-riviere .qr-ajout{border-color:rgba(255,255,255,.7)}
+#qui-riviere.secoue{animation:secoue .5s}
 body.avec-scene:not(.salle-ouverte) #ecran-salle:not([hidden]) ~ #btn-jeux{display:inline-flex;position:fixed;z-index:5;left:50%;transform:translateX(-50%);
   bottom:calc(62px + env(safe-area-inset-bottom,0px));min-height:56px;padding:0 30px;font-size:18px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.35),0 4px 14px var(--glow)}
 
@@ -226,7 +234,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
 </head>
 <body>
 <div class="halos" aria-hidden="true"></div>
-<iframe id="fond-riviere" src="accueil/index.html?v=17" title="Descente du ruisseau en radeau avec Plume" allow="autoplay" tabindex="-1"></iframe>
+<iframe id="fond-riviere" src="accueil/index.html?v=18" title="Descente du ruisseau en radeau avec Plume" allow="autoplay" tabindex="-1"></iframe>
 
 <div id="chargement" role="status">Chargement…</div>
 
@@ -363,6 +371,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
   </div>
 </main>
 <button type="button" class="btn" id="btn-jeux">Les jeux</button>
+<div id="qui-riviere" role="group" aria-label="Qui joue ?"></div>
 
 <!-- Fenêtre : gérer les enfants -->
 <div class="sheet" id="gestion" hidden>
@@ -659,6 +668,14 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
     if (!enfants.length) ouvrirGestion();
   }
 
+  function basculerEnfant(en) {
+    courant = (courant && courant.id === en.id) ? null : en;
+    Salle.choisirEnfant(courant);
+    if (window.signalPlume) window.signalPlume('enfant', courant ? courant.prenom : '');   // Plume dit « Coucou <prénom> ! »
+    message('#msg-salle', '');
+    dessiner();
+  }
+  window.secouerQui = function () { var r = $('#qui-riviere'); r.classList.remove('secoue'); void r.offsetWidth; r.classList.add('secoue'); };
   function dessiner(sansGestion) {
     // Boutons « Qui joue ? »
     var zone = $('#liste-enfants'); zone.textContent = '';
@@ -671,15 +688,24 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
         el('span', { class: 'niveau', text: en.niveau || '' })
       ]);
       b.style.setProperty('--acc', COULEURS[i % COULEURS.length]);
-      b.onclick = function () {
-        courant = (courant && courant.id === en.id) ? null : en;
-        Salle.choisirEnfant(courant);
-        if (window.signalPlume) window.signalPlume('enfant', courant ? courant.prenom : '');   // Plume dit « Coucou <prénom> ! »
-        message('#msg-salle', '');
-        dessiner();
-      };
+      b.onclick = function () { basculerEnfant(en); };
       zone.appendChild(b);
     });
+    // Même choix en haut de la rivière (c'est là qu'on arrive une fois connecté)
+    var rive = $('#qui-riviere'); rive.textContent = '';
+    if (enfants.length) {
+      rive.appendChild(el('span', { class: 'qr-lab', text: 'Qui joue ?' }));
+      enfants.forEach(function (en, i) {
+        var q = el('button', { type: 'button', text: en.prenom, 'aria-pressed': String(!!courant && courant.id === en.id) });
+        q.style.setProperty('--acc', COULEURS[i % COULEURS.length]);
+        q.onclick = function () { basculerEnfant(en); };
+        rive.appendChild(q);
+      });
+    } else {
+      var aj = el('button', { type: 'button', class: 'qr-ajout', text: '+ Ajouter un enfant' });
+      aj.onclick = function () { $('#btn-jeux').click(); ouvrirGestion(); };
+      rive.appendChild(aj);
+    }
     // Rappel en haut tant qu'aucun enfant n'est choisi
     message('#alerte-qui', courant ? '' : (enfants.length ? 'Choisis d\'abord qui joue : touche un prénom ci-dessous, puis un jeu.' : 'Ajoute d\'abord un enfant avec « Gérer les enfants » pour commencer à jouer.'), 'info');
     // Carrés des jeux
@@ -960,7 +986,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
   addEventListener('message', function (e) {
     if (e.origin !== location.origin || !e.data || e.data.type !== 'riviere:jeu' || document.getElementById('ecran-salle').hidden) return;
     var t = document.querySelector('#jeux .tile[href$="g=' + String(e.data.g).replace(/[^a-z0-9-]/g, '') + '"]'); if (!t) return;
-    if (t.getAttribute('aria-disabled') === 'true') document.getElementById('btn-jeux').click();
+    if (t.getAttribute('aria-disabled') === 'true') { if (window.secouerQui) window.secouerQui(); return; }   // pas d'enfant choisi : la barre « Qui joue ? » en haut de la rivière se secoue
     t.click();
   });
   // les boutons 3D de la scène (clé / silhouette) ouvrent le formulaire correspondant
