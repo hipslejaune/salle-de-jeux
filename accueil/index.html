@@ -743,49 +743,6 @@ const radeau = (() => {
   };
 })();
 
-// ───────────── animaux de la forêt assis au bord de l'eau (même style que Plume), qui tournent la tête quand on passe ─────────────
-{
-  const META = {"ours": {"aspect": 0.59375, "haut": 1.1, "pivot": [0.5, 0.5128652420409943]}, "loup": {"aspect": 0.6046875, "haut": 0.9, "pivot": [0.4204625087596356, 0.49237933954276036]}, "ecureuil": {"aspect": 0.5953125, "haut": 0.68, "pivot": [0.36731843575418993, 0.4985446985446985]}, "lion": {"aspect": 0.75, "haut": 1.15, "pivot": [0.4972253052164262, 0.4104912572855953]}, "tigre": {"aspect": 0.6625, "haut": 1.0, "pivot": [0.45554789800137835, 0.5052535404294198]}, "girafe": {"aspect": 0.353, "haut": 2.3, "pivot": [0.49956634865568084, 0.7165137614678899]}};
-  const ORDRE = ['ours', 'loup', 'ecureuil', 'lion', 'tigre', 'girafe'], chg = new THREE.TextureLoader();
-  const MAT = {};
-  for (const n of ORDRE) MAT[n] = ['corps', 'tete'].map(c => { const t = chg.load('animaux/' + n + '-' + c + '.webp'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS;
-    return new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: .08, color: 0xe2e2e2, side: THREE.DoubleSide }); });
-  const texOmbre = cTex(64, 64, (x, w, h) => { const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(20,12,4,.5)'); gr.addColorStop(1, 'rgba(20,12,4,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); }, false);
-  const matOmbre = new THREE.MeshBasicMaterial({ map: texOmbre, transparent: true, depthWrite: false });
-  const liste = [], PAS = 3.6;                                                       // ≈ 3 crans de molette entre deux animaux
-  let k = 0;
-  for (let s = 7; s < LONG - 3; s += PAS) {
-    const p = surParcours(s); if (Math.abs(p.y) < 2.8) continue;                      // pas sous le pont
-    const nom = ORDRE[k % ORDRE.length], cote = k % 2 ? 1 : -1, M = META[nom]; k++;
-    const H = M.haut * (.92 + .16 * ((k * 7919) % 13) / 13), W = H * M.aspect, y = p.y, d = Math.sqrt(1 + dxc(y) ** 2), nx = 1 / d, ny = -dxc(y) / d;
-    const ecart = halfW(y) + .3 + Math.min(W * .45, .5);
-    const x = xc(y) + cote * ecart * nx, yy = y + cote * ecart * ny, z = Math.max(hauteur(x, yy), WL + .03) - .02;
-    const g = new THREE.Group(); g.position.set(x, yy, z); monde.add(g);
-    const gc = new THREE.PlaneGeometry(W, H); gc.translate(0, H / 2, 0); gc.rotateX(Math.PI / 2);
-    const corps = new THREE.Mesh(gc, MAT[nom][0]); corps.renderOrder = 3; g.add(corps);
-    const [pu, pv] = M.pivot, gt = new THREE.PlaneGeometry(W, H); gt.translate(-(pu - .5) * W, H / 2 - pv * H, 0); gt.rotateX(Math.PI / 2);
-    const tete = new THREE.Mesh(gt, MAT[nom][1]); tete.renderOrder = 4; tete.rotation.order = 'ZYX';
-    const bx = (pu - .5) * W, bz = pv * H; tete.position.set(bx, -.012 * H, bz); g.add(tete);
-    const om = new THREE.Mesh(new THREE.CircleGeometry(W * .42, 18), matOmbre); om.scale.set(1, .55, 1); om.position.set(x, yy, z + .03); monde.add(om);
-    liste.push({ g, corps, tete, bx, bz, W, H, face: Math.atan2(-cote * nx, cote * ny), regard: 0, ph: Math.random() * 6 });   // `face` : direction de la rivière vue depuis l'animal
-  }
-  animes.push((dt, t, P) => {
-    const cx = camPos.x, cy = -camPos.z;
-    for (const a of liste) {
-      const vis = Math.abs(a.g.position.y - P.y) < 46; a.g.visible = vis; if (!vis) continue;
-      const dx = cx - a.g.position.x, dy = cy - a.g.position.y;
-      a.g.rotation.z = Math.atan2(dx, -dy);                                         // toujours tourné vers nous
-      // angle entre « face à la rivière » et « vers le radeau » : le corps reste face à l'eau, la tête suit le radeau
-      let rel = Math.atan2(-dx, dy) - a.face; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); rel = THREE.MathUtils.clamp(rel, -1.25, 1.25);
-      a.regard += (rel - a.regard) * Math.min(1, dt * 3);
-      const r = a.regard, sr = Math.sin(r);
-      a.corps.scale.set(.86 + .14 * Math.cos(r), 1, 1 + .012 * Math.sin(t * 2 + a.ph));
-      a.tete.position.x = a.bx - sr * .07 * a.W; a.tete.rotation.y = sr * .1; a.tete.scale.x = .94 + .06 * Math.cos(r);
-      a.tete.position.z = a.bz + .01 * a.H * Math.sin(t * 2 + a.ph);
-    }
-  });
-}
-
 // ───────────── Plume, assis sur le radeau, qui nous regarde (chatouilles au clic) ─────────────
 const plumeBus = {};                                  // plumeBus.parler(audio) : Plume dit une phrase en bougeant la bouche
 const tamponsVoix = new Map(); let voixWA = null, ctxVoix = null;
@@ -880,7 +837,7 @@ const fin = e => { const i = pointeurs.findIndex(q => q.id === e.pointerId); if 
 cv.addEventListener('pointerup', fin); cv.addEventListener('pointercancel', fin);
 cv.addEventListener('wheel', e => { e.preventDefault(); avance(e.deltaY * (e.deltaMode === 1 ? 33 : 1) * 0.012); }, { passive: false });
 cv.addEventListener('keydown', e => { if (e.key === 'ArrowUp' || e.key === 'PageDown' || e.key === ' ') avance(2.5); else if (e.key === 'ArrowDown' || e.key === 'PageUp') avance(-2.5); else if (e.key === 'ArrowLeft') orbite = clamp(orbite + 0.15, -ORB_MAX, ORB_MAX); else if (e.key === 'ArrowRight') orbite = clamp(orbite - 0.15, -ORB_MAX, ORB_MAX); else return; e.preventDefault(); });
-if (window.self === window.top) cv.focus();          // intégrée dans la salle de jeux : on ne vole pas le focus du formulaire de connexion
+if (window.self === window.top) cv.focus();
 
 const epingles = [];
 function redim() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 0.85 ? 78 : 62; camera.updateProjectionMatrix(); }
@@ -979,11 +936,211 @@ cv.addEventListener('pointerleave', () => maisonHUD.survoler(false));
     }
     appuiM = null; }); }
 
+// ───────────── boutons « Connexion » (clé) et « Inscription » (silhouette +) : deux petits flotteurs 3D en bas à droite, même format que la maison ─────────────
+const accesHUD = (() => {
+  const hud = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .1, 20); cam.position.set(0, 0, 0);
+  hud.add(new THREE.HemisphereLight(0xfff4e0, 0x5a4a30, 1.5)); const sol = new THREE.DirectionalLight(0xffffff, 1.6); sol.position.set(-2, 3, 2.5); hud.add(sol);
+  const L = (c, o = {}) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o));
+  const mOr = new THREE.MeshPhongMaterial({ color: 0xeab32a, specular: 0xfff0b0, shininess: 90 }), mBlanc = L(0xfff6e8);
+  // flotteur : disque épais + bouée à bandes blanches
+  function flotteur(couleur) {
+    const g = new THREE.Group();
+    const d = new THREE.Mesh(new THREE.CylinderGeometry(.27, .29, .05, 36), L(couleur)); d.position.y = -.01; g.add(d);
+    const dessus = new THREE.Mesh(new THREE.CylinderGeometry(.235, .235, .012, 36), L(new THREE.Color(couleur).offsetHSL(0, -.05, .12))); dessus.position.y = .02; g.add(dessus);
+    for (let k = 0; k < 8; k++) { const arc = new THREE.Mesh(new THREE.TorusGeometry(.275, .034, 10, 8, .62), k % 2 ? L(couleur) : mBlanc);
+      arc.rotation.x = Math.PI / 2; arc.rotation.z = k * Math.PI / 4; arc.position.y = .012; g.add(arc); }
+    return g;
+  }
+  function cle() {
+    const g = new THREE.Group();
+    const tete = new THREE.Mesh(new THREE.TorusGeometry(.075, .026, 14, 28), mOr); tete.position.set(0, .31, 0); g.add(tete);
+    const tige = new THREE.Mesh(new THREE.CylinderGeometry(.024, .024, .26, 14), mOr); tige.position.set(0, .13, 0); g.add(tige);
+    for (const [y, w] of [[.045, .085], [.1, .06], [.15, .075]]) { const t = new THREE.Mesh(new THREE.BoxGeometry(w, .035, .045), mOr); t.position.set(.024 + w / 2, y, 0); g.add(t); }
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(.036, .036, .03, 14), mOr); col.position.set(0, .225, 0); g.add(col);
+    g.rotation.z = -.28; g.position.y = .02; return g;
+  }
+  function silhouette() {
+    const g = new THREE.Group(), mP = L(0xfff1dc), mV = L(0x4cae3a, { emissive: 0x1c5a10, emissiveIntensity: .4 });
+    const corps = new THREE.Mesh(new THREE.SphereGeometry(.14, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2), mP); corps.scale.set(1.3, 1.55, .9); corps.position.set(-.03, .02, 0); g.add(corps);
+    const tete = new THREE.Mesh(new THREE.SphereGeometry(.088, 24, 18), mP); tete.position.set(-.03, .31, 0); g.add(tete);
+    const pastille = new THREE.Mesh(new THREE.CylinderGeometry(.075, .075, .028, 24), mV); pastille.rotation.x = Math.PI / 2; pastille.position.set(.16, .33, .07); g.add(pastille);
+    for (const [w, h] of [[.088, .024], [.024, .088]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, .012), mBlanc); b.position.set(.16, .33, .088); g.add(b); }
+    g.position.y = .02; return g;
+  }
+  const fiches = [
+    { quoi: 'connexion', couleur: 0x2f8fd8, objet: cle(), texte: 'Tu veux te connecter, clique ici !', voix: new Audio('plume-connexion.mp3') },
+    { quoi: 'inscription', couleur: 0xe5533d, objet: silhouette(), texte: 'Tu veux créer un compte, c’est par ici !', voix: new Audio('plume-inscription.mp3') }
+  ];
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let marge = 22, tailleP = 90, visible = false;
+  for (const f of fiches) {
+    f.voix.preload = 'auto'; f.survol = false; f.tSaut = 0; f.sautAuto = 0; f.dern = -99; f.armee = 0; f.bulleT = 0;
+    f.saut = new THREE.Group(); f.m = new THREE.Group(); f.saut.add(f.m); hud.add(f.saut);
+    f.m.add(flotteur(f.couleur)); f.m.add(f.objet); f.m.position.y = -.12; f.m.rotation.set(.32, -.4, 0);
+    f.zone = new THREE.Mesh(new THREE.PlaneGeometry(.66, .78), new THREE.MeshBasicMaterial({ visible: false })); f.zone.position.set(0, .06, .2); f.saut.add(f.zone);
+    f.bulle = document.createElement('div');
+    f.bulle.style.cssText = 'position:fixed;right:14px;max-width:min(260px,70vw);padding:10px 14px;border-radius:16px;background:#fffdf6;color:#3b2516;font:600 15px/1.3 system-ui,-apple-system,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.3);opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;pointer-events:none;z-index:5';
+    f.bulle.innerHTML = '<span style="color:#d9581f">Plume</span> : <span class="t"></span><i style="position:absolute;bottom:-9px;border:9px solid transparent;border-top-color:#fffdf6;border-bottom:0"></i>';
+    f.bulle.querySelector('.t').textContent = f.texte; document.body.appendChild(f.bulle);
+  }
+  function placer() {
+    cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+    const d = 3, hh = d * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), hw = hh * cam.aspect, px = 2 * hh / innerHeight;
+    tailleP = Math.min(118, Math.max(84, innerHeight * .13)); const taille = tailleP * px;
+    const x1 = hw - 34 * px - taille * .62, ecart = taille * 1.3;
+    fiches.forEach((f, i) => { f.saut.scale.setScalar(taille / .5); f.saut.position.set(x1 - (fiches.length - 1 - i) * ecart, -hh + (Math.max(10, marge) + 40) * px, -d); f.cx = innerWidth / 2 + f.saut.position.x / px; });
+    posBulles();
+  }
+  function posBulles() { for (const f of fiches) { f.bulle.style.bottom = (Math.max(10, marge) + 40 + tailleP * .62 + 14) + 'px'; f.bulle.querySelector('i').style.right = Math.max(10, innerWidth - f.cx - 14 - 9) + 'px'; } }
+  addEventListener('resize', placer); placer();
+  function sous(e) { if (!visible) return null; const r = cv.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, cam);
+    for (const f of fiches) if (ray.intersectObject(f.zone, false).length) return f; return null; }
+  function dire(f) { for (const o of fiches) if (o !== f) { o.bulle.style.opacity = '0'; o.bulleT = 0; } f.bulle.style.opacity = '1'; f.bulle.style.transform = 'none'; f.bulleT = 3.6; }
+  function proposer(f) {                                       // Plume le dit (au plus une fois toutes les 6 s par bouton), la bulle l'écrit
+    const t = performance.now() / 1000; dire(f);
+    if (t - f.dern > 6) { f.dern = t; plumeBus.parler(f.voix).then(ok => { if (!ok) f.dern = -99; }); }
+  }
+  return {
+    fiches, sous, proposer, placer,
+    set marge(v) { marge = v; placer(); },
+    get visible() { return visible; }, set visible(v) { visible = !!v; if (!visible) for (const f of fiches) { f.bulle.style.opacity = '0'; f.survol = false; } },
+    survoler(f) { for (const o of fiches) { const v = o === f; if (v !== o.survol) { o.survol = v; if (v) { proposer(o); cv.style.cursor = 'pointer'; } else if (!f) cv.style.cursor = ''; } } },
+    sauter(f, duree) { f.sautAuto = duree; },
+    rendre(dt) {
+      if (!visible) return;
+      for (const f of fiches) {
+        if (f.bulleT > 0) { f.bulleT -= dt; if (f.bulleT <= 0) { f.bulle.style.opacity = '0'; f.bulle.style.transform = 'translateY(8px)'; } }
+        if (f.sautAuto > 0) { f.sautAuto -= dt; if (!f.survol) f.tSaut = Math.max(f.tSaut, .001); }
+        if (f.survol || f.tSaut > 0) { f.tSaut += dt; const k = (f.tSaut % .62) / .62, h = Math.sin(k * Math.PI); f.m.position.y = -.12 + h * .16; const ec = k < .12 || k > .9 ? .86 : 1;
+          f.m.scale.set(1 + (1 - ec) * .6, ec + h * .08, 1 + (1 - ec) * .6); f.m.rotation.y = -.4 + Math.sin(f.tSaut * 3) * .12;
+          if (!f.survol && !(f.sautAuto > 0) && k > .97) { f.tSaut = 0; f.m.position.y = -.12; f.m.scale.set(1, 1, 1); f.m.rotation.y = -.4; } }
+      }
+      renderer.autoClear = false; renderer.clearDepth(); renderer.render(hud, cam); renderer.autoClear = true;
+    }
+  };
+})();
+if (location.hash === '#test') accesHUD.visible = true;   // en page seule les boutons restent cachés ; la salle de jeux les affiche (sauf une fois connecté)
+cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; accesHUD.survoler(accesHUD.sous(e)); });
+cv.addEventListener('pointerleave', () => accesHUD.survoler(null));
+{ let appui = null;
+  cv.addEventListener('pointerdown', e => { const f = accesHUD.sous(e); appui = f ? { f, x: e.clientX, y: e.clientY, type: e.pointerType } : null; }, true);
+  cv.addEventListener('pointerup', e => {
+    if (appui && Math.hypot(e.clientX - appui.x, e.clientY - appui.y) < 12 && accesHUD.sous(e) === appui.f) {
+      const f = appui.f;
+      // au doigt : la 1re tape fait parler Plume (et sauter le bouton), la 2e (dans les 6 s) ouvre
+      if (appui.type !== 'mouse' && performance.now() - f.armee > 6000) { f.armee = performance.now(); accesHUD.proposer(f); accesHUD.sauter(f, 3); }
+      else { f.armee = 0; try { parent.postMessage({ type: 'riviere:acces', quoi: f.quoi }, location.origin); } catch (er) {} }
+    }
+    appui = null; }); }
+
+// ───────────── portails dimensionnels tous les 20 m : un tourbillon qui aspire vers le centre, où brille l'affiche d'un jeu (cliquable une fois connecté) ─────────────
+const portails = [];
+let sceneConnectee = false;
+{
+  const JEUX = [
+    ['tables-multiplication', 'Le défi des multiplications'], ['additions-soustractions', 'Additions et soustractions'], ['jeu-lecture-ninjago', 'Lecture Ninjago'],
+    ['horloge-mario', 'L’Horloge de Mario'], ['dizaines-et-unites', 'Dizaines et unités']];
+  const chg = new THREE.TextureLoader(), TEX = {};
+  for (const [g, titre] of JEUX) {                                      // affiche = image du jeu + son titre
+    const c = document.createElement('canvas'); c.width = 384; c.height = 512; const x = c.getContext('2d'); x.fillStyle = '#222'; x.fillRect(0, 0, 384, 512);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS; TEX[g] = t;
+    const im = new Image(); im.onload = () => {
+      x.drawImage(im, 0, 0, 384, 512); const gr = x.createLinearGradient(0, 330, 0, 512); gr.addColorStop(0, 'rgba(8,10,40,0)'); gr.addColorStop(1, 'rgba(8,10,40,.88)'); x.fillStyle = gr; x.fillRect(0, 330, 384, 182);
+      x.fillStyle = '#fff'; x.textAlign = 'center'; x.shadowColor = 'rgba(0,0,0,.7)'; x.shadowBlur = 8;
+      let taille = 40; x.font = `800 ${taille}px system-ui,-apple-system,"Segoe UI",sans-serif`; while (x.measureText(titre).width > 330 && taille > 20) { taille -= 2; x.font = `800 ${taille}px system-ui,-apple-system,"Segoe UI",sans-serif`; }
+      const mots = titre.split(' '); if (x.measureText(titre).width > 330) { const m = Math.ceil(mots.length / 2); x.fillText(mots.slice(0, m).join(' '), 192, 450); x.fillText(mots.slice(m).join(' '), 192, 450 + taille * 1.05); } else x.fillText(titre, 192, 470);
+      t.needsUpdate = true; }; im.src = 'affiches/' + g + '.jpg';
+  }
+  const uT = { value: 0 };
+  const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+  const FS = `
+    varying vec2 vUv; uniform float uT, uOp, uVie, uSurvol; uniform sampler2D uTex;
+    float h(vec3 p){ p = fract(p * 0.3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float n3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
+      return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z); }
+    float boite(vec2 p, vec2 b, float r){ vec2 d = abs(p) - b + r; return length(max(d, 0.)) + min(max(d.x, d.y), 0.) - r; }
+    void main(){
+      vec2 p = (vUv - .5) * 2.; float r = length(p), a = atan(p.y, p.x);
+      // tourbillon : anneaux irréguliers en spirale qui glissent vers le centre (les motifs sont aspirés)
+      float tw = a + 2.4 * r + uT * .35, flow = r * 14. + uT * 1.9;
+      vec3 q = vec3(cos(tw) * 1.1, sin(tw) * 1.1, flow);
+      float n = .6 * n3(q) + .28 * n3(q * 2.3 + 7.) + .12 * n3(q * 5. + 3.);
+      vec3 col = mix(vec3(.06, .30, .95), vec3(.09, .24, .03), smoothstep(.36, .5, n));
+      col = mix(col, vec3(.50, .30, .12), smoothstep(.55, .7, n));
+      col += vec3(.45, .7, 1.) * smoothstep(.68, .95, n3(q * 1.3 + 11.)) * .55;
+      col *= .9 + .35 * smoothstep(1., .2, r);
+      col += vec3(.6, .8, 1.) * exp(-r * r * 9.) * .35;
+      // l'affiche, au centre, prend l'ondulation : elle tremble en vagues qui vont vers l'intérieur et tourne un peu
+      float ph = r * 22. + uT * 3.2;
+      float ang = .06 * sin(uT * 1.1) + .025 * sin(ph);
+      vec2 d = vec2(sin(ph), cos(ph * .8)) * .014 * (.5 + r);
+      vec2 pp = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * (p + d);
+      vec2 demi = vec2(.36, .48);
+      vec3 c = texture2D(uTex, vec2(pp.x / (2. * demi.x) + .5, pp.y / (2. * demi.y) + .5)).rgb;
+      float lum = dot(c, vec3(.3, .59, .11));
+      c = mix(vec3(lum) * vec3(.5, .55, .7), c, uVie);                      // pas connecté : affiche éteinte, en gris-bleu
+      c *= (.93 + .07 * sin(ph * .7)) * (1. + .3 * uSurvol);
+      float m = 1. - smoothstep(-.07, .03, boite(pp, demi, .13));           // bords arrondis fondus par transparence
+      col = mix(col, c, m * .95);
+      col += vec3(.5, .75, 1.) * smoothstep(.05, -.02, abs(boite(pp, demi, .13)) - .015) * .25 * (1. - m * .5) * uVie;   // petit halo autour de l'affiche
+      float bord = smoothstep(1., .82, r + (n - .5) * .16);
+      gl_FragColor = vec4(col, bord * uOp);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`;
+  const D = 5.0, HC = 2.3;                                            // diamètre du portail et hauteur de son centre au-dessus de la berge
+  let k = 0;
+  for (let s = 20; s < LONG - 4; s += 20) {
+    const p = surParcours(s); if (Math.abs(p.y) < 5) continue;         // pas sous le pont
+    const [g] = JEUX[k % JEUX.length], cote = k % 2 ? 1 : -1; k++;
+    const y = p.y, d = Math.sqrt(1 + dxc(y) ** 2), nx = 1 / d, ny = -dxc(y) / d, ecart = halfW(y) + 2.6;
+    const x = xc(y) + cote * ecart * nx, yy = y + cote * ecart * ny, z = Math.max(hauteur(x, yy), WL + .03);
+    const gp = new THREE.Group(); gp.position.set(x, yy, z); monde.add(gp);
+    const geo = new THREE.PlaneGeometry(D, D); geo.translate(0, HC, 0); geo.rotateX(Math.PI / 2);
+    const mat = new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      uniforms: { uT, uOp: { value: 0 }, uVie: { value: 0 }, uSurvol: { value: 0 }, uTex: { value: TEX[g] } } });
+    const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 6; mesh.frustumCulled = false; gp.add(mesh);
+    portails.push({ gp, mesh, mat, g, s, survol: 0, cible: 0 });
+  }
+  animes.push((dt, t, P) => {
+    uT.value = t; const cx = camPos.x, cy = -camPos.z;
+    for (const o of portails) {
+      const dx = cx - o.gp.position.x, dy = cy - o.gp.position.y, dist = Math.hypot(dx, dy), vis = dist < 70; o.gp.visible = vis; if (!vis) continue;
+      o.gp.rotation.z = Math.atan2(dx, -dy);                                // toujours tourné vers nous
+      o.survol += (o.cible - o.survol) * Math.min(1, dt * 8);
+      const u = o.mat.uniforms; u.uOp.value = THREE.MathUtils.clamp((68 - dist) / 22, 0, 1) * THREE.MathUtils.clamp((dist - 1.5) / 2.5, 0, 1);
+      u.uVie.value += ((sceneConnectee ? 1 : 0) - u.uVie.value) * Math.min(1, dt * 4); u.uSurvol.value = o.survol;
+    }
+  });
+}
+// clic sur une affiche : seulement si on est connecté (sinon Plume-bulle rappelle de se connecter)
+const rayP = new THREE.Raycaster(), ndcP = new THREE.Vector2();
+function portailSous(e) {
+  const r = cv.getBoundingClientRect(); ndcP.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); rayP.setFromCamera(ndcP, camera);
+  const vis = portails.filter(o => o.gp.visible && o.mat.uniforms.uOp.value > .4); if (!vis.length) return null;
+  const hits = rayP.intersectObjects(vis.map(o => o.mesh), false);
+  for (const h of hits) { const o = vis.find(q => q.mesh === h.object); const u = (h.uv.x - .5) * 2, v = (h.uv.y - .5) * 2; if (Math.abs(u) < .4 && Math.abs(v) < .52) return o; }
+  return null;
+}
+{ let appuiP = null, sur = null;
+  cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const o = portailSous(e);
+    if (o !== sur) { if (sur) sur.cible = 0; sur = o; if (o && sceneConnectee) { o.cible = 1; cv.style.cursor = 'pointer'; } else if (!o) cv.style.cursor = ''; } });
+  cv.addEventListener('pointerleave', () => { if (sur) sur.cible = 0; sur = null; });
+  cv.addEventListener('pointerdown', e => { const o = portailSous(e); appuiP = o ? { o, x: e.clientX, y: e.clientY } : null; }, true);
+  cv.addEventListener('pointerup', e => {
+    if (appuiP && Math.hypot(e.clientX - appuiP.x, e.clientY - appuiP.y) < 12 && portailSous(e) === appuiP.o) {
+      if (sceneConnectee) { appuiP.o.cible = 1; try { parent.postMessage({ type: 'riviere:jeu', g: appuiP.o.g }, location.origin); } catch (er) {} }
+      else maisonHUD.dire('Connecte-toi d’abord pour entrer dans le portail !', 3.6);
+    }
+    appuiP = null; }); }
+
+if (location.hash === '#test') window.__connecte = v => { sceneConnectee = v; };
 let enPause = false;                                  // la salle de jeux met la scène en pause quand son panneau la recouvre
 addEventListener('message', e => {
   if (e.origin !== location.origin) return;
   if (e.data === 'riviere:pause') enPause = true; else if (e.data === 'riviere:reprise') enPause = false;
-  else if (e.data && e.data.type === 'riviere:marge') { aide.style.bottom = (Math.round(e.data.px) + 12) + "px"; maisonHUD.marge = e.data.px; }   // l'indication passe au-dessus du formulaire de la page qui nous intègre
+  else if (e.data && e.data.type === 'riviere:marge') { aide.style.bottom = (Math.round(e.data.px) + 12) + "px"; maisonHUD.marge = e.data.px; accesHUD.marge = e.data.px; if (!TEST) accesHUD.visible = !!e.data.acces; sceneConnectee = !!e.data.connecte; }   // l'indication passe au-dessus du formulaire de la page qui nous intègre
 });
 // intégrée dans la salle de jeux : un clic dans la scène prévient la page (elle referme alors son formulaire de connexion)
 if (window.self !== window.top) addEventListener('pointerdown', () => { try { parent.postMessage('riviere:clic', location.origin); } catch (e) {} }, true);
@@ -1015,7 +1172,7 @@ function boucle(now) {
   for (const c of chunks) { c.a.visible = Math.abs(c.y - P.y) < 44; const vf = Math.abs(c.y - P.y) < 30; for (const m of c.f) m.visible = vf; }
   barre.style.width = (pos / LONG * 100) + '%'; if (pos > 1.2) aide.classList.add('cache');
   for (const f of animes) f(dt, tempsEcoule, P, vit);
-  if (!(TEST && window.__sansRendu)) { renderer.render(scene, camera); maisonHUD.rendre(dt, tempsEcoule); }
+  if (!(TEST && window.__sansRendu)) { renderer.render(scene, camera); maisonHUD.rendre(dt, tempsEcoule); accesHUD.rendre(dt); }
   if (!premier) { premier = true; msg.classList.add('fini'); }
   for (const e of epingles) { v3.set(e.x, e.z, -e.y).project(camera); const ok = v3.z < 1 && Math.abs(v3.x) < 1.2 && Math.abs(v3.y) < 1.2; e.el.style.display = ok ? '' : 'none'; if (ok) e.el.style.transform = `translate3d(${(v3.x * .5 + .5) * innerWidth}px,${(1 - (v3.y * .5 + .5)) * innerHeight}px,0) translate(-50%,-100%)`; }
   if (!TEST) requestAnimationFrame(boucle);

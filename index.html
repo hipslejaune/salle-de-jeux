@@ -226,7 +226,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
 </head>
 <body>
 <div class="halos" aria-hidden="true"></div>
-<iframe id="fond-riviere" src="accueil/index.html?v=8" title="Descente du ruisseau en radeau avec Plume" allow="autoplay" tabindex="-1"></iframe>
+<iframe id="fond-riviere" src="accueil/index.html?v=10" title="Descente du ruisseau en radeau avec Plume" allow="autoplay" tabindex="-1"></iframe>
 
 <div id="chargement" role="status">Chargement…</div>
 
@@ -947,6 +947,15 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
     fermer();
   });
   addEventListener('message', function (e) { if (e.origin === location.origin && e.data === 'riviere:clic' && !sec.hidden) fermer(); });
+  // une affiche dans un portail (connecté seulement) : on ouvre le jeu comme le carré du même nom ; si aucun enfant n'est choisi, la salle s'ouvre pour qu'on le choisisse
+  addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'riviere:jeu' || document.getElementById('ecran-salle').hidden) return;
+    var t = document.querySelector('#jeux .tile[href$="g=' + String(e.data.g).replace(/[^a-z0-9-]/g, '') + '"]'); if (!t) return;
+    if (t.getAttribute('aria-disabled') === 'true') document.getElementById('btn-jeux').click();
+    t.click();
+  });
+  // les boutons 3D de la scène (clé / silhouette) ouvrent le formulaire correspondant
+  addEventListener('message', function (e) { if (e.origin === location.origin && e.data && e.data.type === 'riviere:acces' && !sec.hidden) (e.data.quoi === 'inscription' ? b : a).click(); });
   // un message à lire (lien envoyé, erreur, compte confirmé…) : le formulaire s'ouvre pour qu'on le voie
   var msg = document.getElementById('msg-auth');
   new MutationObserver(function () { if (!msg.hidden && msg.textContent) { baisser(false); ouvrir(true); } }).observe(msg, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
@@ -958,7 +967,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
       var px = 22, h = window.innerHeight, bj = document.getElementById('btn-jeux');
       if (!sec.hidden) { var r = sec.getBoundingClientRect(); px = Math.max(0, h - r.top) + fl.offsetHeight; }
       else if (bj && bj.offsetParent) px = h - bj.getBoundingClientRect().top;
-      try { fond.contentWindow.postMessage({ type: 'riviere:marge', px: px }, location.origin); } catch (e) {}
+      try { fond.contentWindow.postMessage({ type: 'riviere:marge', px: px, acces: !sec.hidden, connecte: !document.getElementById('ecran-salle').hidden }, location.origin); } catch (e) {}
     }, 420);                                                       // après la petite animation du bloc
   }
   if (window.ResizeObserver) new ResizeObserver(marge).observe(sec);
