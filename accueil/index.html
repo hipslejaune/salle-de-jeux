@@ -788,11 +788,13 @@ const radeau = (() => {
 
 // ───────────── Plume, assis sur le radeau, qui nous regarde (chatouilles au clic) ─────────────
 const plumeBus = {};                                  // plumeBus.parler(audio) : Plume dit une phrase en bougeant la bouche
-const tamponsVoix = new Map(); let voixWA = null;
+const tamponsVoix = new Map(); let voixWA = null, ctxVoix = null;
+const ouvrirVoix = () => { try { if (!ctxVoix) ctxVoix = new (window.AudioContext || window.webkitAudioContext)(); if (ctxVoix.state === 'suspended') ctxVoix.resume(); } catch (e) {} };
+addEventListener('pointerdown', ouvrirVoix, true); addEventListener('keydown', ouvrirVoix, true);
 function jouerVoix(a) {
   // renvoie une promesse : durée en secondes si le son part, null s'il est bloqué
   if (voixWA) { try { voixWA.stop(); } catch (e) {} voixWA = null; }
-  const ctx = window.__ctxSon && window.__ctxSon();
+  const ctx = ctxVoix || (window.__ctxSon && window.__ctxSon());
   if (ctx) {
     if (ctx.state === 'suspended') ctx.resume();
     const url = a.src;
@@ -1033,8 +1035,8 @@ window.Riviere = { epingler(el, x, y, z) { document.getElementById('couche').app
   function regler(on) { sonOn = on; bt.setAttribute('aria-pressed', String(on)); bt.textContent = 'Chants d’oiseaux : ' + (on ? 'oui' : 'non');
     charger().then(() => { if (!ctxA) return; if (ctxA.state === 'suspended') ctxA.resume(); gainA.gain.cancelScheduledValues(ctxA.currentTime); gainA.gain.setTargetAtTime(on ? 0.35 : 0, ctxA.currentTime, 0.6); }); }
   bt.addEventListener('click', () => regler(!sonOn));
-  const premierToucher = () => { removeEventListener('pointerdown', premierToucher); if (!sonOn && !bt.dataset.choisi) regler(true); };
-  addEventListener('pointerdown', premierToucher); bt.addEventListener('pointerdown', e => { e.stopPropagation(); bt.dataset.choisi = '1'; });
+  // les oiseaux restent coupés par défaut : on les lance seulement avec le bouton
+  bt.addEventListener('pointerdown', e => { e.stopPropagation(); bt.dataset.choisi = '1'; });
   document.addEventListener('visibilitychange', () => { if (ctxA) { if (document.hidden) ctxA.suspend(); else if (sonOn) ctxA.resume(); } });
 }
 </script>
