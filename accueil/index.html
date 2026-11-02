@@ -39,10 +39,24 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 const LOW = matchMedia('(pointer: coarse)').matches;
 const msg = document.getElementById('chargement');
 const cv = document.getElementById('vue');
-let renderer;
-try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !LOW, powerPreference: 'high-performance' }); }
-catch (e) { msg.textContent = 'Ton navigateur ne peut pas afficher la scène 3D.'; throw e; }
-let dprMax = LOW ? 1.75 : 2;
+// Sur téléphone, si une autre page 3D est ouverte dans un autre onglet, le navigateur peut refuser un 2e contexte WebGL : on réessaie
+// (réglages plus légers, puis attente que l'autre onglet libère la mémoire) avant d'abandonner.
+async function creerRendu() {
+  const reglages = [{ antialias: !LOW, powerPreference: 'high-performance' }, { antialias: false, powerPreference: 'default' }, { antialias: false, powerPreference: 'low-power' }];
+  for (let i = 0; i < 12; i++) {
+    try { return new THREE.WebGLRenderer(Object.assign({ canvas: cv }, reglages[Math.min(i, reglages.length - 1)])); }
+    catch (e) {
+      msg.textContent = 'Mise à l’eau du bateau… (nouvel essai)';
+      await new Promise(r => setTimeout(r, 1000 + i * 300));
+      if (document.hidden) await new Promise(r => addEventListener('visibilitychange', r, { once: true }));
+    }
+  }
+  msg.innerHTML = 'Ton navigateur ne peut pas afficher la scène 3D pour le moment.<br><small>Ferme les autres onglets 3D puis touche ici pour réessayer.</small>';
+  msg.style.cursor = 'pointer'; msg.style.textAlign = 'center'; msg.addEventListener('click', () => location.reload());
+  throw new Error('WebGL indisponible');
+}
+const renderer = await creerRendu();
+let dprMax = LOW ? 1.5 : 2;
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, dprMax));
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
