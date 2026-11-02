@@ -312,10 +312,29 @@ for (let i = 0; i < 120 * fac; i++) { const y = rnd(-150, 150), sg = i % 2 ? 1 :
 }
 // roches : mousse sur le dessus, bande mouillée au ras de l'eau
 const matRoche = new THREE.MeshLambertMaterial({ color: 0xffffff });
-function geoRoche() { const g = new THREE.IcosahedronGeometry(1, 2), p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), f = 1 + .13 * Math.sin(x * 3.1 + y * 1.7) * Math.cos(z * 2.6 - x) + .07 * Math.sin(x * 7.3 - z * 5.1 + y * 4.4); p.setXYZ(i, x * f, y * f, z * f); }
-  g.computeVertexNormals(); return g; }
-const gRoche = geoRoche();
+function geoRoche(detail, graine, plats) {
+  // pierre irrégulière : bosses sur plusieurs échelles + quelques faces taillées, normales lissées (pas d'effet « pixels »)
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, r = mulberry(graine), ph = [];
+  for (let k = 0; k < 9; k++) ph.push(r() * 6.28, .6 + r() * 3.2);
+  const coupes = []; for (let k = 0; k < plats; k++) { const a = r() * 6.28, b = Math.acos(2 * r() - 1); coupes.push([Math.sin(b) * Math.cos(a), Math.sin(b) * Math.sin(a), Math.cos(b), .62 + r() * .25]); }
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.set(p.getX(i), p.getY(i), p.getZ(i));
+    let f = 1;
+    for (let k = 0; k < 3; k++) f += (.16 / (k + 1)) * Math.sin(v.x * ph[k * 2 + 1] * (k + 1) + ph[k * 2]) * Math.cos(v.y * ph[k * 2 + 7 > 17 ? 1 : k * 2 + 7] * (k + 1) - v.z * (k + 1.3) + ph[k * 2 + 1]);
+    f += .05 * Math.sin(v.x * 9.1 + v.y * 7.3 - v.z * 8.2 + ph[4]);
+    v.multiplyScalar(f);
+    for (const [nx, ny, nz, d] of coupes) { const t = v.x * nx + v.y * ny + v.z * nz; if (t > d) v.addScaledVector(new THREE.Vector3(nx, ny, nz), -(t - d) * .85); }
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  // normales lissées : moyenne des normales des sommets qui partagent la même position
+  const n = g.attributes.normal, acc = new Map(), cle = i => (p.getX(i) * 1e4 | 0) + ',' + (p.getY(i) * 1e4 | 0) + ',' + (p.getZ(i) * 1e4 | 0);
+  for (let i = 0; i < p.count; i++) { const k = cle(i), a = acc.get(k) || [0, 0, 0]; a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); acc.set(k, a); }
+  for (let i = 0; i < p.count; i++) { const a = acc.get(cle(i)), l = Math.hypot(...a) || 1; n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); }
+  return g;
+}
+const gRoche = geoRoche(3, 77, 4), gGalet = geoRoche(2, 31, 2);
 matRoche.onBeforeCompile = s => {
   s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nvarying float vUp, vZ;').replace('#include <begin_vertex>',
     '#include <begin_vertex>\n#ifdef USE_INSTANCING\nvUp = normalize(mat3(instanceMatrix) * objectNormal).z; vZ = (instanceMatrix * vec4(position, 1.)).z;\n#else\nvUp = objectNormal.z; vZ = position.z;\n#endif');
@@ -401,7 +420,7 @@ const chunks = [];
 { // galets du lit et rochers de berge
   const g = gRoche, dum = new THREE.Object3D(), c = new THREE.Color();
   const mat = matRoche;
-  const nG = LOW ? 1800 : 4200, nR = LOW ? 90 : 200, mg = new THREE.InstancedMesh(g, mat, nG), mr = new THREE.InstancedMesh(g, mat, nR); let a = 0, b = 0;
+  const nG = LOW ? 1800 : 4200, nR = LOW ? 90 : 200, mg = new THREE.InstancedMesh(gGalet, mat, nG), mr = new THREE.InstancedMesh(g, mat, nR); let a = 0, b = 0;
   for (let t = 0; t < nG * 30 && a < nG; t++) { const y = rnd(-128, 128), x = xc(y) + rnd(-6, 6), d = distS(x, y) - halfW(y); if (d > 0.5) continue;
     dum.position.set(x, y, hauteur(x, y) + 0.005); dum.rotation.set(R() * 3, R() * 3, R() * 3); const s = rnd(.04, .13); dum.scale.set(s, s * rnd(.7, 1), s * .5); dum.updateMatrix(); mg.setMatrixAt(a, dum.matrix); const v = rnd(.16, .34); c.setRGB(v * 1.05, v * .95, v * .8); mg.setColorAt(a, c); a++; }
   for (let t = 0; t < nR * 40 && b < nR; t++) { const y = rnd(-128, 128), x = xc(y) + rnd(-5, 5), d = distS(x, y) - halfW(y); if (d < 0.25 || d > 1.8) continue;
@@ -508,7 +527,9 @@ const instShader = (frag, extraU) => new THREE.ShaderMaterial({ transparent: tru
 
 { // feuilles mortes qui dérivent avec le courant
   const B = new Constr(), up = [0, 0, 1], w = [1, 1, 1];
-  for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283, b = (i + 1) / 10 * 6.283; B.tri([0, 0, 0], [Math.sin(a) * .035, Math.cos(a) * .06, 0], [Math.sin(b) * .035, Math.cos(b) * .06, 0], up, up, up, w, w, w); }
+  const fe = a => [Math.sin(a) * Math.pow(Math.abs(Math.sin(a)), .35) * .034 * (1 - .25 * Math.cos(a)), Math.cos(a) * .062, 0];   // feuille en amande, bouts pointus
+  for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283, b = (i + 1) / 28 * 6.283; B.tri([0, 0, 0], fe(a), fe(b), up, up, up, w, w, w); }
+  B.tri([-.002, -.062, .0005], [.002, -.062, .0005], [0, .05, .0005], up, up, up, [.7, .6, .45], [.7, .6, .45], [.7, .6, .45]);
   const n = LOW ? 24 : 50, m = new THREE.InstancedMesh(B.geo(), matPlante, n), dum = new THREE.Object3D(), c = new THREE.Color(), F = [];
   const place = (f, y) => { f.y = y; f.u = rnd(-.75, .75); f.r = R() * 6.28; f.v = rnd(.18, .32); f.w = rnd(-.5, .5); };
   for (let i = 0; i < n; i++) { const f = {}; place(f, rnd(-100, -60)); F.push(f); const k = R(); c.setRGB(.85 + .3 * k, .45 + .35 * R(), .1 + .1 * R()); if (R() < .3) c.setRGB(.5, .6, .2); m.setColorAt(i, c); }
@@ -821,7 +842,6 @@ let dernierScroll = 0;
 let orient = 1;                                    // sens du défilement par rapport au parcours (s'inverse au bout du chemin)
 const avance = d => { let dd = d * orient;
   // au bout du chemin, si on continue de défiler dans le même sens, le radeau fait demi-tour tout seul
-  if ((dd > 0 && pos >= LONG - 0.25) || (dd < 0 && pos <= 0.25 && sens < 0)) { orient = -orient; dd = -dd; elan = 0; demiRapide = true; }
   cible = clamp(cible + dd, 0, LONG); derniereAction = dernierScroll = performance.now(); return dd; };
 const pointeurs = []; let dist0 = 0;
 cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pointeurs.push({ id: e.pointerId, x: e.clientX, y: e.clientY, type: e.pointerType, t: performance.now() }); elan = 0; });
@@ -843,11 +863,79 @@ addEventListener('resize', redim); redim();
 
 const v3 = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
 let tPrec = performance.now(), nImg = 0, tFps = performance.now(), premier = false;
+// ───────────── bouton maison : petite cabane en rondins en 3D, en bas à gauche ; elle sautille au survol, un clic ramène le radeau au départ ─────────────
+const maisonHUD = (() => {
+  const hud = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .1, 20); cam.position.set(0, 0, 0);
+  hud.add(new THREE.HemisphereLight(0xfff4e0, 0x5a4a30, 1.5)); const sol = new THREE.DirectionalLight(0xffffff, 1.6); sol.position.set(-2, 3, 2.5); hud.add(sol);
+  const bois = cTex(128, 64, (x, w, h) => { x.fillStyle = '#9a6a3c'; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 60; i++) { x.strokeStyle = `rgba(${60 + Math.random() * 50},${35 + Math.random() * 30},15,${.2 + Math.random() * .4})`; x.lineWidth = .5 + Math.random() * 1.5; x.beginPath(); const y = Math.random() * h; x.moveTo(0, y); x.bezierCurveTo(40, y + Math.random() * 4 - 2, 90, y + Math.random() * 4 - 2, w, y); x.stroke(); } });
+  const mBois = new THREE.MeshLambertMaterial({ map: bois, color: 0xc89060 }), mBout = new THREE.MeshLambertMaterial({ color: 0xd9b07a }), mToit = new THREE.MeshLambertMaterial({ map: bois, color: 0x9a4a2a });
+  const mPorte = new THREE.MeshLambertMaterial({ map: bois, color: 0x6a3a1a }), mVitre = new THREE.MeshLambertMaterial({ color: 0xffd36a, emissive: 0xffb02a, emissiveIntensity: .7 });
+  const mPierre = new THREE.MeshLambertMaterial({ color: 0x8a8580 }), mHerbe = new THREE.MeshLambertMaterial({ color: 0x5aa83a });
+  const m = new THREE.Group(), saut = new THREE.Group(); saut.add(m); hud.add(saut);
+  const rondin = (L, x, y, z, rotY) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(.021, .021, L, 10), mBois); c.rotation.z = Math.PI / 2; c.rotation.y = rotY; c.position.set(x, y, z); m.add(c);
+    for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.CircleGeometry(.02, 10), mBout); b.position.set(x + (rotY ? 0 : s * L / 2), y, z + (rotY ? s * L / 2 : 0)); b.rotation.y = rotY ? (s > 0 ? 0 : Math.PI) : s * Math.PI / 2; m.add(b); } };
+  const LX = .34, LZ = .26;
+  for (let i = 0; i < 6; i++) { const y = .03 + i * .038 + (i % 2 ? .019 : 0);
+    if (i % 2 === 0) { rondin(LX + .05, 0, y, LZ / 2, 0); rondin(LX + .05, 0, y, -LZ / 2, 0); }
+    else { rondin(LZ + .05, LX / 2, y, 0, Math.PI / 2); rondin(LZ + .05, -LX / 2, y, 0, Math.PI / 2); } }
+  const hm = .03 + 6 * .038;                                                              // haut des murs
+  // pignons (triangles en planches) à gauche et à droite
+  for (const s of [-1, 1]) { const f = new THREE.Shape(); f.moveTo(-LZ / 2 - .01, 0); f.lineTo(LZ / 2 + .01, 0); f.lineTo(0, .15); f.closePath();
+    const g = new THREE.ExtrudeGeometry(f, { depth: .02, bevelEnabled: false }); const p = new THREE.Mesh(g, mBois); p.rotation.y = Math.PI / 2; p.position.set(s * LX / 2 - .01, hm - .01, 0); m.add(p); }
+  // toit à deux pans, qui déborde, et faîtière
+  const pente = Math.atan2(.15, LZ / 2), lp = Math.hypot(.15, LZ / 2) + .06;
+  for (const s of [-1, 1]) { const t = new THREE.Mesh(new THREE.BoxGeometry(LX + .12, .022, lp), mToit); t.rotation.x = s * pente; t.position.set(0, hm + .075 + .012, s * (LZ / 4 + .012)); m.add(t);
+    for (let k = 0; k < 5; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(LX + .13, .008, .012), new THREE.MeshLambertMaterial({ color: 0x7a3418 })); b.position.set(0, .013, -lp / 2 + (k + .5) * lp / 5); t.add(b); } }
+  const fai = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, LX + .14, 10), mBois); fai.rotation.z = Math.PI / 2; fai.position.set(0, hm + .158, 0); m.add(fai);
+  // porte, fenêtre éclairée, cheminée en pierre
+  const porte = new THREE.Mesh(new THREE.BoxGeometry(.075, .13, .012), mPorte); porte.position.set(-.06, .095, LZ / 2 + .02); m.add(porte);
+  const poignee = new THREE.Mesh(new THREE.SphereGeometry(.007, 8, 6), new THREE.MeshLambertMaterial({ color: 0xe8c040 })); poignee.position.set(-.035, .09, LZ / 2 + .03); m.add(poignee);
+  const cadre = new THREE.Mesh(new THREE.BoxGeometry(.075, .07, .012), mPorte); cadre.position.set(.075, .14, LZ / 2 + .02); m.add(cadre);
+  const vitre = new THREE.Mesh(new THREE.BoxGeometry(.058, .053, .012), mVitre); vitre.position.set(.075, .14, LZ / 2 + .024); m.add(vitre);
+  for (const [w, h, x, y] of [[.006, .053, .075, .14], [.058, .006, .075, .14]]) { const c = new THREE.Mesh(new THREE.BoxGeometry(w, h, .014), mPorte); c.position.set(x, y, LZ / 2 + .027); m.add(c); }
+  const chem = new THREE.Mesh(new THREE.BoxGeometry(.05, .12, .05), mPierre); chem.position.set(.1, hm + .12, -.05); m.add(chem);
+  const sole = new THREE.Mesh(new THREE.CylinderGeometry(.27, .29, .03, 28), mHerbe); sole.position.y = -.005; m.add(sole);
+  m.position.y = -.12; m.rotation.set(.32, -.55, 0);
+  const zone = new THREE.Mesh(new THREE.PlaneGeometry(.66, .78), new THREE.MeshBasicMaterial({ visible: false })); zone.position.set(0, .06, .2); saut.add(zone);   // zone de clic fixe (la maison bouge quand elle saute)
+  const cible = [zone];
+  let survol = false, tSaut = 0, marge = 22;
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function placer() {
+    cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+    const d = 3, hh = d * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), hw = hh * cam.aspect, px = 2 * hh / innerHeight;
+    const taille = Math.min(118, Math.max(84, innerHeight * .13)) * px;                     // ≈ 64 à 92 pixels de large
+    saut.scale.setScalar(taille / .5);
+    saut.position.set(-hw + 34 * px + taille * .62, -hh + (Math.max(10, marge) + 40) * px, -d);
+  }
+  function touche(e) { const r = cv.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, cam); return ray.intersectObjects(cible, false).length > 0; }
+  addEventListener('resize', placer); placer();
+  return {
+    touche, placer,
+    set marge(v) { marge = v; placer(); },
+    survoler(v) { if (v !== survol) { survol = v; cv.style.cursor = v ? 'pointer' : ''; } },
+    rendre(dt, t) {
+      // au survol : petits sauts en boucle (écrasement à l'atterrissage) ; sinon elle se repose doucement
+      if (survol || tSaut > 0) { tSaut += dt; const k = (tSaut % .62) / .62, hautSaut = Math.sin(k * Math.PI);
+        saut.children[0].position.y = -.12 + hautSaut * .16; const ec = k < .12 || k > .9 ? .86 : 1;
+        saut.children[0].scale.set(1 + (1 - ec) * .6, ec + hautSaut * .08, 1 + (1 - ec) * .6); saut.children[0].rotation.y = -.55 + Math.sin(tSaut * 3) * .12;
+        if (!survol && k > .97) { tSaut = 0; saut.children[0].position.y = -.12; saut.children[0].scale.set(1, 1, 1); saut.children[0].rotation.y = -.55; } }
+      renderer.autoClear = false; renderer.clearDepth(); renderer.render(hud, cam); renderer.autoClear = true;
+    }
+  };
+})();
+function retourDepart() { cible = pos = 0; elan = 0; orbite = 0; camInit = false; capLisse = null; dernierScroll = 0; }
+cv.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') maisonHUD.survoler(maisonHUD.touche(e)); });
+cv.addEventListener('pointerleave', () => maisonHUD.survoler(false));
+{ let appuiM = null;
+  cv.addEventListener('pointerdown', e => { appuiM = maisonHUD.touche(e) ? { x: e.clientX, y: e.clientY } : null; }, true);
+  cv.addEventListener('pointerup', e => { if (appuiM && Math.hypot(e.clientX - appuiM.x, e.clientY - appuiM.y) < 12 && maisonHUD.touche(e)) retourDepart(); appuiM = null; }); }
+
 let enPause = false;                                  // la salle de jeux met la scène en pause quand son panneau la recouvre
 addEventListener('message', e => {
   if (e.origin !== location.origin) return;
   if (e.data === 'riviere:pause') enPause = true; else if (e.data === 'riviere:reprise') enPause = false;
-  else if (e.data && e.data.type === 'riviere:marge') aide.style.bottom = (Math.round(e.data.px) + 12) + "px";   // l'indication passe au-dessus du formulaire de la page qui nous intègre
+  else if (e.data && e.data.type === 'riviere:marge') { aide.style.bottom = (Math.round(e.data.px) + 12) + "px"; maisonHUD.marge = e.data.px; }   // l'indication passe au-dessus du formulaire de la page qui nous intègre
 });
 // intégrée dans la salle de jeux : un clic dans la scène prévient la page (elle referme alors son formulaire de connexion)
 if (window.self !== window.top) addEventListener('pointerdown', () => { try { parent.postMessage('riviere:clic', location.origin); } catch (e) {} }, true);
@@ -863,7 +951,7 @@ function boucle(now) {
   if (!pointeurs.length && now - derniereAction > 2500) orbite *= Math.pow(0.4, dt);              // la vue revient derrière le bateau
   const P = surParcours(pos); capLisse = capLisse === null ? P.h : capLisse + (P.h - capLisse) * (1 - Math.exp(-dt * 4));
   const tg = tempsEcoule;
-  if (vit < -0.15) sens = -1; else if (vit > 0.15) sens = 1;
+  sens = 1;                                                  // on avance ou on recule sans se retourner
   { const d = (sens < 0 ? Math.PI : 0) - demi, k = demiRapide ? 2.2 : 1, voulu = clamp(d * 6 * k, -4.5 * k, 4.5 * k); demiV += clamp(voulu - demiV, -12 * k * k * dt, 12 * k * k * dt); demi += demiV * dt; if (Math.abs(d) < 0.05) demiRapide = false; }
   capB = capLisse + demi;
   bateau.position.set(P.x, P.y, WL - 0.015 + Math.sin(tg * 1.7) * 0.006); bateau.rotation.z = -capB; radeau.maj(dt, tg, vit * sens * Math.max(0, Math.cos(demi - (sens < 0 ? Math.PI : 0))), capB);
@@ -879,7 +967,7 @@ function boucle(now) {
   for (const c of chunks) { c.a.visible = Math.abs(c.y - P.y) < 44; const vf = Math.abs(c.y - P.y) < 30; for (const m of c.f) m.visible = vf; }
   barre.style.width = (pos / LONG * 100) + '%'; if (pos > 1.2) aide.classList.add('cache');
   for (const f of animes) f(dt, tempsEcoule, P, vit);
-  if (!(TEST && window.__sansRendu)) renderer.render(scene, camera);
+  if (!(TEST && window.__sansRendu)) { renderer.render(scene, camera); maisonHUD.rendre(dt, tempsEcoule); }
   if (!premier) { premier = true; msg.classList.add('fini'); }
   for (const e of epingles) { v3.set(e.x, e.z, -e.y).project(camera); const ok = v3.z < 1 && Math.abs(v3.x) < 1.2 && Math.abs(v3.y) < 1.2; e.el.style.display = ok ? '' : 'none'; if (ok) e.el.style.transform = `translate3d(${(v3.x * .5 + .5) * innerWidth}px,${(1 - (v3.y * .5 + .5)) * innerHeight}px,0) translate(-50%,-100%)`; }
   if (!TEST) requestAnimationFrame(boucle);
