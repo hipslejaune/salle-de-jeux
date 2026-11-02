@@ -771,7 +771,7 @@ function jouerVoix(a) {
   const ombre = new THREE.Mesh(new THREE.CircleGeometry(.23, 20), new THREE.MeshBasicMaterial({ map: cTex(64, 64, (x, w, h) => { const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(20,12,4,.55)'); gr.addColorStop(1, 'rgba(20,12,4,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); }, false), transparent: true, depthWrite: false }));
   ombre.scale.set(1, .75, 1); ombre.position.set(-.1, -.36, .085); bateau.children[0].add(ombre);
   // voix des chatouilles (les mêmes que sur la page de Plume)
-  const voix = ['plume-clic-0.mp3', 'plume-clic-1.mp3', 'plume-clic-3.mp3'].map(f => new Audio(f)), voixQueue = new Audio('plume-clic-2.mp3');
+  const voix = ['plume-chatouille-1.mp3', 'plume-chatouille-2.mp3', 'plume-chatouille-3.mp3'].map(f => new Audio(f)), voixQueue = new Audio('plume-chatouille-3.mp3');   // voix 05 du studio : « Aaah ! Ça chatouille ! »
   for (const a of [...voix, voixQueue]) a.preload = 'auto';
   let rire = 0, rireFin = 0, tortille = 0, saut = 0, nClic = 0, enCours = null, parle = 0, bouchePar = 0, imgPar = null;
   plumeBus.parler = a => {
@@ -1044,13 +1044,19 @@ let sceneConnectee = false;
   for (const [g, titre] of JEUX) {                                      // affiche = image du jeu + son titre
     const c = document.createElement('canvas'); c.width = 512; c.height = 512; const x = c.getContext('2d'); x.fillStyle = '#222'; x.fillRect(0, 0, 512, 512);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS; TEX[g] = t;
-    const im = new Image(); im.onload = () => {
-      x.drawImage(im, 0, -45, 512, 683); const gr = x.createLinearGradient(0, 330, 0, 512); gr.addColorStop(0, 'rgba(8,10,40,0)'); gr.addColorStop(1, 'rgba(8,10,40,.8)'); x.fillStyle = gr; x.fillRect(0, 330, 512, 182);
-      x.fillStyle = '#fff'; x.textAlign = 'center'; x.shadowColor = 'rgba(0,0,0,.7)'; x.shadowBlur = 8;
-      let taille = 40; x.font = `800 ${taille}px system-ui,-apple-system,"Segoe UI",sans-serif`; while (x.measureText(titre).width > 340 && taille > 20) { taille -= 2; x.font = `800 ${taille}px system-ui,-apple-system,"Segoe UI",sans-serif`; }
-      const mots = titre.split(' '); if (x.measureText(titre).width > 340) { const m = Math.ceil(mots.length / 2); x.fillText(mots.slice(0, m).join(' '), 256, 405); x.fillText(mots.slice(m).join(' '), 256, 405 + taille * 1.05); } else x.fillText(titre, 256, 425);
-      t.needsUpdate = true; }; im.src = 'affiches/' + g + '.jpg';
+    const im = new Image(); im.onload = () => { x.drawImage(im, 0, -45, 512, 683); t.needsUpdate = true; }; im.src = 'affiches/' + g + '.jpg';
   }
+  // nom du jeu : une jolie écriture qui flotte dans l'air sous le portail
+  const policeP = new FontFace('Pacifico', 'url(pacifico.woff2)'), etiquettes = [];
+  function dessinerEtiquette(o) {
+    const c = o.etiquette.material.map.image, x = c.getContext('2d'), titre = o.titre; x.clearRect(0, 0, c.width, c.height);
+    let taille = 150; const f = () => `${taille}px Pacifico, "Segoe Script", "Brush Script MT", cursive`; x.font = f(); while (x.measureText(titre).width > c.width - 90 && taille > 40) { taille -= 6; x.font = f(); }
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
+    x.shadowColor = 'rgba(140,200,255,.95)'; x.shadowBlur = 38; x.lineWidth = 22; x.strokeStyle = 'rgba(30,20,100,.7)'; x.strokeText(titre, c.width / 2, c.height / 2);
+    x.shadowBlur = 14; const gr = x.createLinearGradient(0, c.height * .2, 0, c.height * .8); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#ffe9b8'); x.fillStyle = gr; x.fillText(titre, c.width / 2, c.height / 2);
+    o.etiquette.material.map.needsUpdate = true;
+  }
+  policeP.load().then(f => { document.fonts.add(f); for (const o of portails) dessinerEtiquette(o); }).catch(() => {});
   const uT = { value: 0 };
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
   const FS = `
@@ -1081,7 +1087,7 @@ let sceneConnectee = false;
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
     }`;
-  const D = 4.8, HC = 1.9;                                            // diamètre du portail et hauteur de son centre au-dessus de la berge
+  const D = 4.2, HC = 3.3;                                            // diamètre du portail et hauteur de son centre au-dessus de la berge
   let k = 0;
   for (let s = 20; s < LONG - 4; s += 20) {
     const p = surParcours(s); if (Math.abs(p.y) < 5) continue;         // pas sous le pont
@@ -1093,7 +1099,12 @@ let sceneConnectee = false;
     const mat = new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       uniforms: { uT, uOp: { value: 0 }, uVie: { value: 0 }, uSurvol: { value: 0 }, uTex: { value: TEX[g] } } });
     const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 6; mesh.frustumCulled = false; gp.add(mesh);
-    portails.push({ gp, mesh, mat, g, s, survol: 0, cible: 0 });
+    const titre = JEUX.find(j => j[0] === g)[1], cE = document.createElement('canvas'); cE.width = 1400; cE.height = 300;
+    const tE = new THREE.CanvasTexture(cE); tE.colorSpace = THREE.SRGBColorSpace; tE.anisotropy = ANIS;
+    const gE = new THREE.PlaneGeometry(4.4, 4.4 * 300 / 1400); gE.rotateX(Math.PI / 2);
+    const etiquette = new THREE.Mesh(gE, new THREE.MeshBasicMaterial({ map: tE, transparent: true, depthWrite: false })); etiquette.renderOrder = 7; etiquette.position.set(0, 0, 0); gp.add(etiquette);
+    const voix = new Audio('plume-jeu-' + g + '.mp3'); voix.preload = 'auto';
+    const o = { gp, mesh, mat, g, s, survol: 0, cible: 0, titre, etiquette, voix, dern: -99, ph: Math.random() * 6 }; portails.push(o); dessinerEtiquette(o);
   }
   animes.push((dt, t, P) => {
     uT.value = t; const cx = camPos.x, cy = -camPos.z;
@@ -1103,11 +1114,16 @@ let sceneConnectee = false;
       o.survol += (o.cible - o.survol) * Math.min(1, dt * 8);
       const u = o.mat.uniforms; u.uOp.value = THREE.MathUtils.clamp((68 - dist) / 22, 0, 1) * THREE.MathUtils.clamp((dist - 1.5) / 2.5, 0, 1);
       u.uSurvol.value = o.survol;
+      const fl = o.etiquette; fl.position.z = .95 + Math.sin(t * 1.3 + o.ph) * .09 + o.survol * .06; fl.position.x = Math.sin(t * .8 + o.ph) * .05; fl.rotation.y = Math.sin(t * .9 + o.ph) * .025;
+      fl.material.opacity = u.uOp.value * (.88 + .12 * o.survol); fl.scale.setScalar(1 + .06 * o.survol);
     }
   });
 }
 // clic sur une affiche : seulement si on est connecté (sinon Plume-bulle rappelle de se connecter)
 const rayP = new THREE.Raycaster(), ndcP = new THREE.Vector2();
+function direJeu(o, force) {                            // Plume prononce le nom du jeu (au plus une fois toutes les 3 s par portail, sauf clic)
+  const t = performance.now() / 1000; if (!force && t - o.dern < 3) return; o.dern = t; plumeBus.parler(o.voix).then(ok => { if (!ok) o.dern = -99; });
+}
 function portailSous(e) {
   const r = cv.getBoundingClientRect(); ndcP.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); rayP.setFromCamera(ndcP, camera);
   const vis = portails.filter(o => o.gp.visible && o.mat.uniforms.uOp.value > .4); if (!vis.length) return null;
@@ -1117,11 +1133,12 @@ function portailSous(e) {
 }
 { let appuiP = null, sur = null;
   cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const o = portailSous(e);
-    if (o !== sur) { if (sur) sur.cible = 0; sur = o; if (o && sceneConnectee) { o.cible = 1; cv.style.cursor = 'pointer'; } else if (!o) cv.style.cursor = ''; } });
+    if (o !== sur) { if (sur) sur.cible = 0; sur = o; if (o) { direJeu(o, false); o.cible = 1; if (sceneConnectee) cv.style.cursor = 'pointer'; } else cv.style.cursor = ''; } });
   cv.addEventListener('pointerleave', () => { if (sur) sur.cible = 0; sur = null; });
   cv.addEventListener('pointerdown', e => { const o = portailSous(e); appuiP = o ? { o, x: e.clientX, y: e.clientY } : null; }, true);
   cv.addEventListener('pointerup', e => {
     if (appuiP && Math.hypot(e.clientX - appuiP.x, e.clientY - appuiP.y) < 12 && portailSous(e) === appuiP.o) {
+      direJeu(appuiP.o, true);
       if (sceneConnectee) { appuiP.o.cible = 1; try { parent.postMessage({ type: 'riviere:jeu', g: appuiP.o.g }, location.origin); } catch (er) {} }
       else maisonHUD.dire('Connecte-toi d’abord pour entrer dans le portail !', 3.6);
     }
