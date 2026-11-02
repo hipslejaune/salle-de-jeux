@@ -818,7 +818,7 @@ function jouerVoix(a) {
 const ORB_MAX = 20 * Math.PI / 180;            // la vue pivote au plus de 20° à droite ou à gauche
 let sens = 1, demi = 0, demiV = 0, capB = 0, demiRapide = false;          // demi-tour du radeau quand on recule
 let pos = 0, cible = 0, elan = 0, orbite = 0, derniereAction = 0, capLisse = null, tempsEcoule = 0;
-const camPos = new THREE.Vector3(), camVise = new THREE.Vector3(); let camInit = false;
+const camPos = new THREE.Vector3(), camVise = new THREE.Vector3(); let camInit = false; let viseAuto = 0, hautAuto = 0;
 const aide = document.getElementById('aide'), barre = document.querySelector('#piste i');
 let dernierScroll = 0;
 let orient = 1;                                    // sens du défilement par rapport au parcours (s'inverse au bout du chemin)
@@ -1178,7 +1178,12 @@ function boucle(now) {
   const portrait = camera.aspect < 0.85, cx = P.x - fx * (portrait ? 3.0 : 2.1), cy = P.y - fy * (portrait ? 3.0 : 2.1), cz = Math.min(WL + (portrait ? 1.55 : 1.25), 1.1 + 2 * sstep(1.0, 3.2, Math.abs(cy)));   // la caméra se baisse pour passer sous le pont
   v3.set(cx, cz, -cy); if (!camInit) { camPos.copy(v3); camInit = true; } else camPos.lerp(v3, 1 - Math.exp(-dt * 8));
   camera.position.copy(camPos);
-  camVise.set(P.x + fx * 1.4, WL + 0.35, -(P.y + fy * 1.4)); camera.lookAt(camVise);
+  // aide : quand on passe devant un portail, le regard se tourne (et se lève) vers lui, doucement, pour qu'on voie bien l'affiche
+  { let w = 0, cibleV = 0; for (const o of portails) { const ds = o.s - pos, k = ds >= 0 ? 1 - sstep(9, 18, ds) : 1 - sstep(3, 10, -ds);
+      if (k > w) { w = k; let rel = Math.atan2(o.gp.position.x - P.x, o.gp.position.y - P.y) - (capB + orbite); rel = Math.atan2(Math.sin(rel), Math.cos(rel)); cibleV = clamp(rel, -.85, .85) * k; } }
+    const lis = 1 - Math.exp(-dt * 2.2); viseAuto += (cibleV - viseAuto) * lis; hautAuto += (w * 1.2 - hautAuto) * lis; }
+  const gx = Math.sin(capB + orbite + viseAuto), gy = Math.cos(capB + orbite + viseAuto);
+  camVise.set(cx + gx * 3.5, WL + 0.35 + hautAuto, -(cy + gy * 3.5)); camera.lookAt(camVise);
   ciel.position.copy(camera.position);
   // soleil et ombres qui suivent le bateau
   soleil.target.position.set(P.x, WL, -P.y); soleil.position.copy(soleil.target.position).addScaledVector(sunDir, 80); soleil.target.updateMatrixWorld();
