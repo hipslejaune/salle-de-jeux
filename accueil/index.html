@@ -722,6 +722,49 @@ const radeau = (() => {
   };
 })();
 
+// ───────────── animaux de la forêt assis au bord de l'eau (même style que Plume), qui tournent la tête quand on passe ─────────────
+{
+  const META = {"ours": {"aspect": 0.59375, "haut": 1.1, "pivot": [0.5, 0.5128652420409943]}, "loup": {"aspect": 0.6046875, "haut": 0.9, "pivot": [0.4204625087596356, 0.49237933954276036]}, "ecureuil": {"aspect": 0.5953125, "haut": 0.68, "pivot": [0.36731843575418993, 0.4985446985446985]}, "lion": {"aspect": 0.75, "haut": 1.15, "pivot": [0.4972253052164262, 0.4104912572855953]}, "tigre": {"aspect": 0.6625, "haut": 1.0, "pivot": [0.45554789800137835, 0.5052535404294198]}, "girafe": {"aspect": 0.353, "haut": 2.3, "pivot": [0.49956634865568084, 0.7165137614678899]}};
+  const ORDRE = ['ours', 'loup', 'ecureuil', 'lion', 'tigre', 'girafe'], chg = new THREE.TextureLoader();
+  const MAT = {};
+  for (const n of ORDRE) MAT[n] = ['corps', 'tete'].map(c => { const t = chg.load('animaux/' + n + '-' + c + '.webp'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS;
+    return new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: .08, color: 0xe2e2e2, side: THREE.DoubleSide }); });
+  const texOmbre = cTex(64, 64, (x, w, h) => { const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(20,12,4,.5)'); gr.addColorStop(1, 'rgba(20,12,4,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); }, false);
+  const matOmbre = new THREE.MeshBasicMaterial({ map: texOmbre, transparent: true, depthWrite: false });
+  const liste = [], PAS = 3.6;                                                       // ≈ 3 crans de molette entre deux animaux
+  let k = 0;
+  for (let s = 7; s < LONG - 3; s += PAS) {
+    const p = surParcours(s); if (Math.abs(p.y) < 2.8) continue;                      // pas sous le pont
+    const nom = ORDRE[k % ORDRE.length], cote = k % 2 ? 1 : -1, M = META[nom]; k++;
+    const H = M.haut * (.92 + .16 * ((k * 7919) % 13) / 13), W = H * M.aspect, y = p.y, d = Math.sqrt(1 + dxc(y) ** 2), nx = 1 / d, ny = -dxc(y) / d;
+    const ecart = halfW(y) + .3 + Math.min(W * .45, .5);
+    const x = xc(y) + cote * ecart * nx, yy = y + cote * ecart * ny, z = Math.max(hauteur(x, yy), WL + .03) - .02;
+    const g = new THREE.Group(); g.position.set(x, yy, z); monde.add(g);
+    const gc = new THREE.PlaneGeometry(W, H); gc.translate(0, H / 2, 0); gc.rotateX(Math.PI / 2);
+    const corps = new THREE.Mesh(gc, MAT[nom][0]); corps.renderOrder = 3; g.add(corps);
+    const [pu, pv] = M.pivot, gt = new THREE.PlaneGeometry(W, H); gt.translate(-(pu - .5) * W, H / 2 - pv * H, 0); gt.rotateX(Math.PI / 2);
+    const tete = new THREE.Mesh(gt, MAT[nom][1]); tete.renderOrder = 4; tete.rotation.order = 'ZYX';
+    const bx = (pu - .5) * W, bz = pv * H; tete.position.set(bx, -.012 * H, bz); g.add(tete);
+    const om = new THREE.Mesh(new THREE.CircleGeometry(W * .42, 18), matOmbre); om.scale.set(1, .55, 1); om.position.set(x, yy, z + .03); monde.add(om);
+    liste.push({ g, corps, tete, bx, bz, W, H, face: Math.atan2(-cote * nx, cote * ny), regard: 0, ph: Math.random() * 6 });   // `face` : direction de la rivière vue depuis l'animal
+  }
+  animes.push((dt, t, P) => {
+    const cx = camPos.x, cy = -camPos.z;
+    for (const a of liste) {
+      const vis = Math.abs(a.g.position.y - P.y) < 46; a.g.visible = vis; if (!vis) continue;
+      const dx = cx - a.g.position.x, dy = cy - a.g.position.y;
+      a.g.rotation.z = Math.atan2(dx, -dy);                                         // toujours tourné vers nous
+      // angle entre « face à la rivière » et « vers le radeau » : le corps reste face à l'eau, la tête suit le radeau
+      let rel = Math.atan2(-dx, dy) - a.face; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); rel = THREE.MathUtils.clamp(rel, -1.25, 1.25);
+      a.regard += (rel - a.regard) * Math.min(1, dt * 3);
+      const r = a.regard, sr = Math.sin(r);
+      a.corps.scale.set(.86 + .14 * Math.cos(r), 1, 1 + .012 * Math.sin(t * 2 + a.ph));
+      a.tete.position.x = a.bx - sr * .07 * a.W; a.tete.rotation.y = sr * .1; a.tete.scale.x = .94 + .06 * Math.cos(r);
+      a.tete.position.z = a.bz + .01 * a.H * Math.sin(t * 2 + a.ph);
+    }
+  });
+}
+
 // ───────────── Plume, assis sur le radeau, qui nous regarde (chatouilles au clic) ─────────────
 {
   const H = .66, W = H * 348 / 467, chg = new THREE.TextureLoader();
