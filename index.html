@@ -180,6 +180,7 @@ select option{background:var(--sheet);color:var(--tx)}
   .badge{font-size:9.5px;padding:2px 7px}
 }
 </style>
+<link rel="stylesheet" href="scene-accueil.css">
 </head>
 <body>
 <div class="halos" aria-hidden="true"></div>
@@ -274,7 +275,8 @@ select option{background:var(--sheet);color:var(--tx)}
   </section>
 
   <div class="lab">Les jeux</div>
-  <div class="grid" id="jeux">
+  <div id="scene-jeux" role="group" aria-label="Les jeux : touche un jeu pour jouer"></div>
+  <div class="grid" id="jeux" hidden>
     <a class="tile mult" href="jeu.html?g=tables-multiplication" target="_blank" rel="noopener">
       <span class="badge">Tables</span>
       <span><span class="label">Le défi des multiplications</span><div class="hint">Les tables, de plus en plus fort</div></span>
@@ -296,6 +298,8 @@ select option{background:var(--sheet);color:var(--tx)}
       <span><span class="label">Dizaines et unités</span><div class="hint">Entoure les paquets de 10</div></span>
     </a>
   </div>
+
+  <p class="vue-bascule"><button type="button" class="lien" id="vue-bascule">Afficher les jeux en carrés</button></p>
 
   <footer class="pied">
     <a href="confidentialite.html" target="_blank" rel="noopener">Confidentialité</a>
@@ -366,6 +370,7 @@ select option{background:var(--sheet);color:var(--tx)}
 
 <script src="vendor/supabase.js"></script>
 <script src="salle.js"></script>
+<script src="scene-accueil.js"></script>
 <script>
 (function () {
   'use strict';
@@ -637,17 +642,32 @@ select option{background:var(--sheet);color:var(--tx)}
     Array.prototype.forEach.call(document.querySelectorAll('#jeux .tile'), function (t) {
       if (actif) t.removeAttribute('aria-disabled'); else t.setAttribute('aria-disabled', 'true');
     });
+    if (scene) scene.activer(actif);
     if (!sansGestion) dessinerGestion();
   }
 
-  $('#jeux').addEventListener('click', function (e) {
-    var t = e.target.closest('.tile');
+  /* Scène d'accueil (sol néon + jeux flottants) ; les carrés restent disponibles avec le lien sous la scène */
+  var scene = null;
+  try { if (window.SceneAccueil) scene = SceneAccueil.monter($('#scene-jeux')); } catch (e) { scene = null; }
+  if (scene) scene.activer(!!courant);
+  if (!scene) { $('#scene-jeux').hidden = true; $('#jeux').hidden = false; $('#vue-bascule').hidden = true; }
+  $('#vue-bascule').addEventListener('click', function () {
+    var carres = $('#jeux').hidden;                       // on passe de la scène aux carrés, ou l'inverse
+    $('#jeux').hidden = !carres; $('#scene-jeux').hidden = carres;
+    this.textContent = carres ? 'Afficher la scène des jeux' : 'Afficher les jeux en carrés';
+    if (!carres && scene) scene.remonter();
+  });
+
+  function clicJeu(e) {
+    var t = e.target.closest('.tile, .s-carte');
     if (t && t.getAttribute('aria-disabled') === 'true') {
       e.preventDefault();
       var q = $('#qui'); q.classList.remove('secoue'); void q.offsetWidth; q.classList.add('secoue');
       message('#msg-salle', enfants.length ? 'Choisis d\'abord qui joue en touchant un prénom.' : 'Ajoute d\'abord un enfant avec « Gérer les enfants ».', 'err');
     }
-  });
+  }
+  $('#jeux').addEventListener('click', clicJeu);
+  $('#scene-jeux').addEventListener('click', clicJeu);
 
   /* ---------- Gestion des enfants (fenêtre qui monte du bas) ---------- */
   function optionsNiveau(select, valeur) {
