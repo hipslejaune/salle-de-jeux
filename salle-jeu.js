@@ -18,7 +18,7 @@
     window.SpeechSynthesisUtterance = function (t) { this.text = t; };
   } catch (e) { /* rien */ }
   var plumeScript = document.createElement('script');
-  plumeScript.src = BASE + 'plume/plume-compagnon.js?v=1';
+  plumeScript.src = BASE + 'plume/plume-compagnon.js?v=2';
   (document.head || document.documentElement).appendChild(plumeScript);
   function avecPlume(fn) {
     if (window.Plume && window.Plume.version) return fn(window.Plume);

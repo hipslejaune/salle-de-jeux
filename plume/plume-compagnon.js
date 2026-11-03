@@ -246,7 +246,7 @@
     });
   }
   // R\u00e9pliques communes disponibles dans plume/voix/ (variantes _kaliana, _kael, _gen)
-  var COMMUN = {"salut-additions-soustractions_kaliana": 1, "salut-additions-soustractions_kael": 1, "salut-additions-soustractions_gen": 1, "salut-tables-multiplication_kaliana": 1, "salut-tables-multiplication_kael": 1, "salut-tables-multiplication_gen": 1, "salut-jeu-lecture-ninjago_kaliana": 1, "salut-jeu-lecture-ninjago_kael": 1, "salut-jeu-lecture-ninjago_gen": 1, "salut-horloge-mario_kaliana": 1, "salut-horloge-mario_kael": 1, "salut-horloge-mario_gen": 1, "salut-dizaines-et-unites_kaliana": 1, "salut-dizaines-et-unites_kael": 1, "salut-dizaines-et-unites_gen": 1, "bravo-1": 1, "bravo-2": 1, "bravo-3": 1, "bravo-4": 1, "bravo-5": 1, "bravo-6": 1, "bravo-7": 1, "bravo-8": 1, "encore-1": 1, "encore-2": 1, "encore-3": 1, "encore-4": 1, "encore-5": 1, "serie-1": 1, "serie-2": 1, "oui-1": 1, "non-1": 1, "regarde-1": 1, "chatouilles-1": 1, "chatouilles-2": 1, "ennui-1": 1, "dodo-1": 1, "reveil-1": 1, "fin-1_kaliana": 1, "fin-1_kael": 1, "fin-1_gen": 1, "fin-2_kaliana": 1, "fin-2_kael": 1, "fin-2_gen": 1};
+  var COMMUN = {"encore-1": 1, "salut-jeu-lecture-ninjago_kaliana": 1, "salut-dizaines-et-unites_gen": 1, "salut-jeu-lecture-ninjago_kael": 1, "salut-additions-soustractions_kael": 1, "encore-3": 1, "reveil-1": 1, "salut-tables-multiplication_kael": 1, "salut-horloge-mario_kael": 1, "bravo-8": 1, "serie-2": 1, "non-1": 1, "bravo-4": 1, "fin-1_kael": 1, "encore-5": 1, "salut-additions-soustractions_kaliana": 1, "fin-2_gen": 1, "chatouilles-2": 1, "salut-additions-soustractions_gen": 1, "salut-horloge-mario_kaliana": 1, "fin-2_kaliana": 1, "regarde-1": 1, "salut-dizaines-et-unites_kaliana": 1, "bravo-1": 1, "chatouilles-1": 1, "salut-tables-multiplication_kaliana": 1, "encore-4": 1, "fin-1_kaliana": 1, "serie-1": 1, "fin-2_kael": 1, "salut-dizaines-et-unites_kael": 1, "bravo-6": 1, "bravo-2": 1, "fin-1_gen": 1, "bravo-7": 1, "bravo-3": 1, "salut-tables-multiplication_gen": 1, "ennui-1": 1, "encore-2": 1, "bravo-5": 1, "salut-horloge-mario_gen": 1, "oui-1": 1, "dodo-1": 1, "salut-jeu-lecture-ninjago_gen": 1};
   var ROT = {};
   function au_hasard(prefixeSit) {
     var ids = Object.keys(COMMUN).map(function (k) { return k.replace(/_(kaliana|kael|gen)$/, ''); })
@@ -392,7 +392,7 @@
     erreur: function () { return dire(au_hasard('encore'), { anim: 'non' }); },
     serie: function () { return dire(au_hasard('serie'), { anim: 'bravo' }); },
     fin: function () { return dire(au_hasard('fin'), { anim: 'danse' }); },
-    saluer: function (jeu) { if (!root) monter(); var cle = 'salut-' + jeu; return dire(COMMUN[cle + '_gen'] ? cle : null, { anim: 'coucou' }); },
+    saluer: function (jeu) { if (!root) monter(); var cle = 'salut-' + jeu; return dire(COMMUN[cle + '_gen'] ? cle : VOIX + cle + '_' + prefixe + '.mp3', { anim: 'coucou' }); },
     montrer: function (c, ms) { return action(function () { return montrer(c, ms); }); },
     bravo: function () { return action(bravo); }, danse: function (ms) { return action(function () { return danse(ms); }); },
     saut: function () { return action(sautJoie); }, oui: function () { return action(oui); }, non: function () { return action(non); },
