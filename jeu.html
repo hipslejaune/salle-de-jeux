@@ -25,6 +25,8 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;colo
 (function () {
   /* Livraison protégée : le jeu n'est téléchargé que par un parent connecté, depuis un espace privé de la base. */
   var JEUX = ['additions-soustractions', 'tables-multiplication', 'jeu-lecture-ninjago', 'horloge-mario', 'dizaines-et-unites'];
+  /* Version du fichier dans le bucket « jeux » : <nom>-v<N>.html (on téléverse une nouvelle version au lieu d'écraser). */
+  var VERSIONS = { 'additions-soustractions': 2, 'tables-multiplication': 2 };
   var c = document.getElementById('c');
   function erreur(texte, rejouer) {
     c.textContent = texte;
@@ -39,7 +41,7 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;colo
     try { s = (await client.auth.getSession()).data.session; } catch (e) { s = null; }
     if (!s || !window.Salle.enfantCourant()) return location.replace('./');
     var r;
-    try { r = await client.storage.from('jeux').download(nom + '.html'); } catch (e) { return erreur('La salle de jeux ne répond pas pour le moment.', true); }
+    try { r = await client.storage.from('jeux').download(nom + (VERSIONS[nom] ? '-v' + VERSIONS[nom] : '') + '.html'); } catch (e) { return erreur('La salle de jeux ne répond pas pour le moment.', true); }
     if (r.error || !r.data) return erreur('Ce jeu n\'est pas disponible pour le moment.', true);
     var html; try { html = await r.data.text(); } catch (e) { return erreur('Le jeu n\'a pas pu être chargé.', true); }
     document.open(); document.write(html); document.close();
