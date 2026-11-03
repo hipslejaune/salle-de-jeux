@@ -28,6 +28,8 @@
 <div id="piste"><i></i></div>
 <div id="chargement" role="status">Mise à l’eau du bateau…</div>
 
+<style>#plumeRig #ombre{display:none}</style>
+<script src="plume-rig.js"></script>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
@@ -776,56 +778,36 @@ function jouerVoix(a) {
   }
   a.currentTime = 0; return a.play().then(() => (isFinite(a.duration) && a.duration > 0) ? a.duration : 2.5).catch(() => null);
 }
-{
-  const H = .66, W = H * 348 / 467, chg = new THREE.TextureLoader();
-  const T = {}; for (const [k, f] of [['repos', 'plume.webp'], ['clin', 'plume-clin.webp'], ['rire1', 'plume-rire1.webp'], ['rire2', 'plume-rire2.webp'], ['parle1', 'plume-parle1.webp'], ['parle2', 'plume-parle2.webp']]) { const t = chg.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS; T[k] = t; }
-  const g = new THREE.PlaneGeometry(W, H); g.translate(0, H / 2, 0); g.rotateX(Math.PI / 2);
-  const mat = new THREE.MeshBasicMaterial({ map: T.repos, transparent: true, alphaTest: .08, color: 0xeeeeee, side: THREE.DoubleSide });
-  const plume = new THREE.Mesh(g, mat); plume.renderOrder = 3; plume.rotation.order = 'ZYX'; monde.add(plume);
+{ // Plume animé (calques peints + visage, voix 05) posé sur le radeau ; plume-rig.js
   const ombre = new THREE.Mesh(new THREE.CircleGeometry(.23, 20), new THREE.MeshBasicMaterial({ map: cTex(64, 64, (x, w, h) => { const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(20,12,4,.55)'); gr.addColorStop(1, 'rgba(20,12,4,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); }, false), transparent: true, depthWrite: false }));
   ombre.scale.set(1, .75, 1); ombre.position.set(-.1, -.36, .085); bateau.children[0].add(ombre);
-  // voix des chatouilles (les mêmes que sur la page de Plume)
-  const voix = ['plume-chatouille-1.mp3', 'plume-chatouille-2.mp3', 'plume-chatouille-3.mp3'].map(f => new Audio(f)), voixQueue = new Audio('plume-chatouille-3.mp3');   // voix 05 du studio : « Aaah ! Ça chatouille ! »
-  for (const a of [...voix, voixQueue]) a.preload = 'auto';
-  let rire = 0, rireFin = 0, tortille = 0, saut = 0, nClic = 0, enCours = null, parle = 0, bouchePar = 0, imgPar = null;
-  plumeBus.parler = a => {
-    if (enCours) { enCours.pause(); enCours.currentTime = 0; }
-    enCours = a; rire = 0; tortille = 0; parle = 2.6;
-    return jouerVoix(a).then(d => { parle = d || 2.6; return !!d; });   // son bloqué : la bouche bouge quand même
+  const plume = window.PlumeRig ? window.PlumeRig.monter(document.getElementById('couche')) : null;
+  window.Plume = plume;
+  // le son de Plume démarre au premier geste (règle des navigateurs) ; avant ça, les phrases passent par l'ancien lecteur
+  let pret = false;
+  const demarrer = () => { if (!plume || pret) return; plume.initAudio().then(() => { pret = true; }).catch(() => {}); };
+  addEventListener('pointerdown', demarrer, { capture: true }); addEventListener('keydown', demarrer, { capture: true });
+  plumeBus.parler = a => (plume && pret) ? plume.direURL(a.src) : jouerVoix(a).then(d => !!d);
+  plumeBus.anime = (quand, prenom) => {   // gestes de Plume avec ses répliques (voix 05)
+    if (!plume) return false;
+    if (prenom !== undefined) plume.prenom(prenom);
+    const f = { connexion: () => plume.bonjour(false), enfant: () => plume.bonjour(false), jeux: plume.choisir, depart: plume.aurevoir, bravo: plume.bravo, encouragement: plume.encourager }[quand];
+    if (!f) return false;
+    const go = () => plume.action(f);
+    if (pret) go(); else { demarrer(); const t0 = performance.now(), att = setInterval(() => { if (pret || performance.now() - t0 > 4000) { clearInterval(att); if (pret) go(); } }, 100); }
+    return true;
   };
-  const chatouiller = queue => {
-    if (enCours) { enCours.pause(); enCours.currentTime = 0; }
-    const a = queue ? voixQueue : voix[nClic++ % voix.length]; enCours = a; parle = 0;
-    rire = 1.9; rireFin = 1.9; tortille = 1; saut = 1;
-    jouerVoix(a).then(d => { if (d) { rire = d; rireFin = d; } });
+  const H = .62, base = new THREE.Vector3(), haut = new THREE.Vector3(), p = new THREE.Vector3();
+  window.__majPlume = () => {   // appelé à chaque image : Plume suit le radeau, à l'échelle de la caméra
+    if (!plume) return;
+    bateau.updateMatrix(); p.set(-.1, -.36, .07).applyMatrix4(bateau.matrix);
+    base.set(p.x, p.z, -p.y).project(camera); haut.set(p.x, p.z + H, -p.y).project(camera);
+    const ok = base.z < 1 && Math.abs(base.x) < 1.3 && Math.abs(base.y) < 1.3;
+    plume.el.style.display = ok ? '' : 'none'; if (!ok) return;
+    const xb = (base.x * .5 + .5) * innerWidth, yb = (1 - (base.y * .5 + .5)) * innerHeight, yh = (1 - (haut.y * .5 + .5)) * innerHeight;
+    const k = Math.max(.02, (yb - yh) / 760);
+    plume.el.style.transform = `translate3d(${xb - 340 * k}px,${yb - 795 * k}px,0) scale(${k})`;
   };
-  // un clic (ou une tape) sans glisser sur Plume déclenche les chatouilles
-  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(); let appui = null;
-  cv.addEventListener('pointerdown', e => { appui = { x: e.clientX, y: e.clientY, t: performance.now() }; });
-  cv.addEventListener('pointerup', e => { if (!appui) return; const bouge = Math.hypot(e.clientX - appui.x, e.clientY - appui.y), duree = performance.now() - appui.t; appui = null;
-    if (bouge > 10 || duree > 600) return;
-    const r = cv.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObject(plume)[0]; if (!hit) return;
-    const u = hit.uv.x, v = hit.uv.y, flip = hit.face && hit.face.normal ? 0 : 0;               // la queue est en bas à droite de l'image
-    chatouiller(u > .78 && v < .56);
-  });
-  const pos = new THREE.Vector3(); let clin = 0, prochain = 2.5, bouche = 0;
-  animes.push((dt, t) => {
-    bateau.updateMatrix(); pos.set(-.1, -.36, .07).applyMatrix4(bateau.matrix);
-    const dx = camPos.x - pos.x, dy = -camPos.z - pos.y; plume.position.copy(pos); plume.rotation.z = Math.atan2(dx, -dy);
-    // tortillement pendant le rire (comme sur la page de Plume), petit saut au début
-    if (rire > 0) { rire -= dt; const k = 1 - rire / rireFin; tortille = .25 + .75 * (1 - k); if (rire <= 0) tortille = 0; }
-    saut = Math.max(0, saut - dt * 2.8);
-    plume.rotation.y = Math.sin(t * 38) * .09 * tortille;
-    plume.position.z += Math.sin(Math.min(1, 1 - saut) * Math.PI) * .07 * (saut > 0 ? 1 : 0);
-    const sq = 1 + .018 * Math.sin(t * 2.1); plume.scale.set(1 + .03 * tortille * Math.sin(t * 19), 1, sq - .03 * tortille * Math.sin(t * 19));
-    // visage : rire (bouche qui bouge) ou clignements
-    let m = T.repos;
-    if (parle > 0) { parle -= dt; bouchePar -= dt; if (bouchePar < 0 || !imgPar) { bouchePar = .07 + Math.random() * .08; const r = Math.random(); imgPar = r < .45 ? T.parle2 : r < .85 ? T.parle1 : T.repos; } m = parle < .12 ? T.repos : imgPar; }
-    else if (rire > 0) { bouche -= dt; if (bouche < 0) bouche = .08 + Math.random() * .1; m = Math.sin(t * 40) > -.2 ? T.rire2 : T.rire1; if (rire < .25) m = T.rire1; }
-    else { prochain -= dt; if (prochain < 0) { clin = .14; prochain = 2.5 + Math.random() * 3.5; if (Math.random() < .2) prochain = .3; } clin -= dt; if (clin > 0) m = T.clin; }
-    if (mat.map !== m) mat.map = m;
-  });
 }
 
 // ───────────── mouvement, caméra, interaction ─────────────
@@ -1169,6 +1151,7 @@ const suffixePrenom = p => { const n = String(p || '').normalize('NFD').replace(
 const auHasard = t => t[Math.floor(Math.random() * t.length)];
 let premiereVisite = true;
 function plumeDit(quand, prenom) {
+  if (plumeBus.anime && plumeBus.anime(quand, suffixePrenom(prenom))) return;   // Plume animé : geste + réplique
   const s = suffixePrenom(prenom); let f = null;
   if (quand === 'connexion') { f = premiereVisite ? 'accueil-1_' + s : auHasard(['accueil-2_', 'accueil-3_']) + s; premiereVisite = false; }   // à la connexion : bienvenue
   else if (quand === 'enfant') { if (prenom) f = auHasard(['accueil-2_', 'accueil-3_']) + s; }                                             // un enfant est choisi : « Coucou Kaliana ! »
@@ -1177,8 +1160,8 @@ function plumeDit(quand, prenom) {
   if (f) plumeBus.parler(voixPlume(f));
 }
 { let derniere = performance.now(), nEnnui = 0, ennuiDit = false;
-  for (const ev of ['pointerdown', 'pointermove', 'wheel', 'keydown']) addEventListener(ev, () => { derniere = performance.now(); if (ennuiDit) { ennuiDit = false; nEnnui = 0; if (sceneConnectee) plumeBus.parler(voixPlume('reveil-1')); } }, true);
-  setInterval(() => { if (enPause || !sceneConnectee || document.hidden) return;                                                       // connecté et inactif : Plume s'ennuie
+  for (const ev of ['pointerdown', 'pointermove', 'wheel', 'keydown']) addEventListener(ev, () => { derniere = performance.now(); if (ennuiDit) { ennuiDit = false; nEnnui = 0; if (sceneConnectee && !window.Plume) plumeBus.parler(voixPlume('reveil-1')); } }, true);
+  setInterval(() => { if (window.Plume || enPause || !sceneConnectee || document.hidden) return;                                                       // connecté et inactif : Plume s'ennuie
     if (performance.now() - derniere > 45000 * (nEnnui + 1)) { plumeBus.parler(voixPlume(nEnnui % 2 ? 'ennui-2' : 'ennui-1')); nEnnui++; ennuiDit = true; } }, 2000); }
 
 if (location.hash === '#test') window.__connecte = v => { sceneConnectee = v; };
@@ -1227,6 +1210,7 @@ function boucle(now) {
   if (!(TEST && window.__sansRendu)) { renderer.render(scene, camera); maisonHUD.rendre(dt, tempsEcoule); accesHUD.rendre(dt); }
   if (!premier) { premier = true; msg.classList.add('fini'); }
   for (const e of epingles) { v3.set(e.x, e.z, -e.y).project(camera); const ok = v3.z < 1 && Math.abs(v3.x) < 1.2 && Math.abs(v3.y) < 1.2; e.el.style.display = ok ? '' : 'none'; if (ok) e.el.style.transform = `translate3d(${(v3.x * .5 + .5) * innerWidth}px,${(1 - (v3.y * .5 + .5)) * innerHeight}px,0) translate(-50%,-100%)`; }
+  if (window.__majPlume) window.__majPlume();
   if (!TEST) requestAnimationFrame(boucle);
 }
 const TEST = location.hash === '#test'; if (!TEST) requestAnimationFrame(boucle); else window.__etape = () => boucle(tPrec + 50);
