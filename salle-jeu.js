@@ -3,11 +3,27 @@
      <script src="https://hipslejaune.github.io/salle-de-jeux/salle-jeu.js"></script>
      SalleJeu.demarrer('nom-du-jeu', function (etat) { ...le jeu démarre ici ; etat = progression enregistrée ou null... });
      SalleJeu.sauver(etat);                      // enregistre la progression (regroupé, réessayé si hors connexion)
-     SalleJeu.partie({ score: 10, details: {} }); // ajoute une partie terminée à l'historique */
+     SalleJeu.partie({ score: 10, details: {} }); // ajoute une partie terminée à l'historique (Plume fait la danse de la joie)
+   Plume, le panda roux, est chargé automatiquement en bas à droite (plume/plume-compagnon.js) : c'est la SEULE voix des jeux.
+   La voix du navigateur (speechSynthesis) est coupée ici pour tous les jeux, présents et à venir. Voir l'API window.Plume
+   en tête de plume/plume-compagnon.js (Plume.dire, Plume.reussite, Plume.erreur, Plume.montrer...). */
 (function () {
   var BASE = window.SALLE_BASE || 'https://hipslejaune.github.io/salle-de-jeux/';
   var racine = document.documentElement;
   racine.style.visibility = 'hidden';        // rien ne s'affiche tant que l'accès n'est pas vérifié
+
+  /* ---- Plume : seule voix des jeux. Jamais de voix du navigateur, quoi qu'il arrive. ---- */
+  try {
+    if (window.speechSynthesis) { window.speechSynthesis.speak = function () {}; window.speechSynthesis.getVoices = function () { return []; }; }
+    window.SpeechSynthesisUtterance = function (t) { this.text = t; };
+  } catch (e) { /* rien */ }
+  var plumeScript = document.createElement('script');
+  plumeScript.src = BASE + 'plume/plume-compagnon.js?v=1';
+  (document.head || document.documentElement).appendChild(plumeScript);
+  function avecPlume(fn) {
+    if (window.Plume && window.Plume.version) return fn(window.Plume);
+    plumeScript.addEventListener('load', function () { if (window.Plume) fn(window.Plume); });
+  }
 
   var jeu = null, client = null, enfant = null;
   var derniereErreur = '';
@@ -136,6 +152,8 @@
   function partie(p) {
     parties.push({ score: Math.round(Number(p && p.score) || 0), details: (p && p.details) || {} });
     viderParties();
+    // Fin de partie : Plume danse ; il parle seulement si le jeu ne dit pas déjà quelque chose.
+    avecPlume(function (P) { setTimeout(function () { if (P.parle()) P.danse(3500); else P.fin(); }, 900); });
   }
 
   /* ---- Démarrage ---- */
@@ -182,6 +200,18 @@
     try { window.Salle.journaliser('lancement_jeu', jeu); } catch (e) { /* le suivi ne doit jamais gêner le jeu */ }
     racine.style.visibility = 'visible';
     quandPret(etat || null, { id: enfant.id, prenom: enfant.prenom, niveau: enfant.niveau || null });
+    avecPlume(function (P) {
+      P.prenom(enfant.prenom);
+      P.coucou();
+      // Le son n'est permis qu'après un premier geste : Plume dit bonjour au premier toucher, sauf si le jeu parle déjà.
+      var salue = false;
+      function salut() {
+        if (salue) return; salue = true;
+        document.removeEventListener('pointerdown', salut, true); document.removeEventListener('keydown', salut, true);
+        setTimeout(function () { if (!P.parle()) P.saluer(jeu); }, 450);
+      }
+      document.addEventListener('pointerdown', salut, true); document.addEventListener('keydown', salut, true);
+    });
   }
 
   window.SalleJeu = { demarrer: demarrer, sauver: sauver, partie: partie };
