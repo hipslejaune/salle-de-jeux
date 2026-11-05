@@ -1035,7 +1035,7 @@ let sceneConnectee = false;
 {
   const JEUX = [
     ['tables-multiplication', 'Le défi des multiplications'], ['additions-soustractions', 'Additions et soustractions'], ['jeu-lecture-ninjago', 'Lecture Ninjago'],
-    ['horloge-mario', 'L’Horloge de Mario'], ['dizaines-et-unites', 'Dizaines et unités']];
+    ['horloge-mario', 'L’Horloge de Mario'], ['dizaines-et-unites', 'Dizaines et unités'], ['coloriage-magique', 'Coloriage magique']];
   const chg = new THREE.TextureLoader(), TEX = {};
   for (const [g, titre] of JEUX) {                                      // affiche = image du jeu + son titre
     const c = document.createElement('canvas'); c.width = 512; c.height = 512; const x = c.getContext('2d'); x.fillStyle = '#222'; x.fillRect(0, 0, 512, 512);
