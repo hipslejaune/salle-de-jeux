@@ -24,9 +24,9 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;colo
 <script>
 (function () {
   /* Livraison protégée : le jeu n'est téléchargé que par un parent connecté, depuis un espace privé de la base. */
-  var JEUX = ['additions-soustractions', 'tables-multiplication', 'jeu-lecture-ninjago', 'horloge-mario', 'dizaines-et-unites', 'orthographe-conjugaison'];
+  var JEUX = ['additions-soustractions', 'tables-multiplication', 'jeu-lecture-ninjago', 'horloge-mario', 'dizaines-et-unites', 'orthographe-conjugaison', 'histoire-de-france'];
   /* Version du fichier dans le bucket « jeux » : <nom>-v<N>.html (on téléverse une nouvelle version au lieu d'écraser). */
-  var VERSIONS = { 'additions-soustractions': 2, 'tables-multiplication': 2, 'horloge-mario': 2, 'dizaines-et-unites': 2, 'jeu-lecture-ninjago': 2, 'orthographe-conjugaison': 1 };
+  var VERSIONS = { 'additions-soustractions': 2, 'tables-multiplication': 2, 'horloge-mario': 2, 'dizaines-et-unites': 2, 'jeu-lecture-ninjago': 2, 'orthographe-conjugaison': 1, 'histoire-de-france': 1 };
   var c = document.getElementById('c');
   function erreur(texte, rejouer) {
     c.textContent = texte;
