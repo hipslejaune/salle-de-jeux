@@ -320,6 +320,7 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
       <span class="pastille" id="parent-mail"></span>
     </div>
     <div class="actions">
+      <button type="button" class="btn ghost petit" id="btn-rafraichir" title="Recharger la salle et les jeux sans passer par le cache">↻ Rafraîchir</button>
       <button type="button" class="btn ghost petit" id="btn-gerer" aria-haspopup="dialog" aria-expanded="false">Gérer les enfants</button>
       <button type="button" class="btn ghost petit" id="btn-admin" aria-haspopup="dialog" hidden>Administration</button>
       <button type="button" class="btn ghost petit rose" id="btn-deco">Se déconnecter</button>
@@ -619,6 +620,13 @@ body.avec-scene #ecran-auth.baisse .baisser{pointer-events:auto}
       }
     } catch (err) { message('#msg-recup', traduire(err), 'err'); }
     occupe(b, false);
+  };
+
+  /* ---------- Rafraîchir (pratique pendant le développement) : recharge sans le cache du navigateur ---------- */
+  $('#btn-rafraichir').onclick = function () {
+    var u = new URL(location.href);
+    u.searchParams.set('r', Date.now().toString(36));
+    location.replace(u.toString());
   };
 
   /* ---------- Déconnexion ---------- */
